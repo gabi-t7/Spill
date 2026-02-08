@@ -3,167 +3,189 @@
 <head>
     <title>Spill</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="https://sdk.crazygames.com"></script>
     <style>
         body { margin: 0; background: #0f171e; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: monospace; touch-action: none; }
-        #game-container { position: relative; width: 360px; height: 640px; background: #f5f5f7; border: 4px solid #d1d1d6; border-radius: 20px; overflow: hidden; }
-        #hud{position:absolute;top:20px;left:20px;right:20px;border:1px solid #4a4e50;padding:10px;background:rgba(0,0,0,0.85);color:#faedcd;pointer-events:none;line-height:1.4;z-index:100;font-size:10px}
+        #game-container { position: relative; width: 360px; height: 640px; border: 4px solid #d1d1d6; border-radius: 20px; overflow: hidden; }
+        #hud{position:absolute;top:10px;left:10px;right:10px;border:1px solid #4a4e50;padding:10px;background:rgba(0,0,0,0.9);color:#faedcd;pointer-events:none;line-height:1.4;z-index:1000;font-size:10px;box-shadow:0 0 10px #000}
         #w{color:#ff4757;font-weight:bold}
+        .flash-red { color: #ff0000 !important; text-shadow: 0 0 8px #ff0000; animation: blink 0.4s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
         canvas{display:block;background:rgba(0,0,0,0.1)}
         #pf,#missed{position:absolute;width:100%;text-align:center;top:30%;font-size:24px;font-weight:bold;display:none;text-shadow:0 0 10px rgba(0,0,0,0.5);z-index:150}
         #pf{color:#0f0;text-shadow:0 0 10px #0f0}
         #missed{color:#ff4757;text-shadow:0 0 10px #ff4757;font-size:80px;top:40%}
-        #level-start{position:absolute;top:0;left:0;width:100%;height:100%;background-size:cover;background-position:center;z-index:300;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#faedcd}
-        #ls-content{background:rgba(0,0,0,0.9);padding:40px 0;border-top:4px solid #d4a373;border-bottom:4px solid #d4a373;width:100%;box-shadow:0 0 30px #000}
+        #level-start, #game-over{position:absolute;top:0;left:0;width:100%;height:100%;z-index:300;display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#faedcd}
+        #ls-content, #go-content{background:rgba(0,0,0,0.9);padding:40px 0;border-top:4px solid #d4a373;border-bottom:4px solid #d4a373;width:100%;box-shadow:0 0 30px #000}
         #lr{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:280px;background:rgba(0,0,0,0.95);border:2px solid #b8a68a;color:#faedcd;padding:20px;display:none;z-index:200;text-align:center;box-shadow:0 0 30px #000}
         #stars{color:#ffd700;font-size:32px;margin:10px 0;letter-spacing:5px}
         #vibe-label{font-size:20px;font-weight:bold;margin-bottom:15px;display:block}
         .stat-row{display:flex;justify-content:space-between;margin:8px 0;font-size:14px;border-bottom:1px solid #3d2b1f}
         button{background:#d4a373;border:none;padding:15px 25px;color:#1a0a0a;font-weight:bold;cursor:pointer;margin-top:15px;width:70%;font-size:16px}
-        #adm-btn-style { background:#ff4757; padding:5px; width:auto; font-size:10px; margin-top:5px; pointer-events:auto; display:inline-block; }
-        /* FIXED COPYRIGHT STYLE */
-        #copyright { position: absolute; bottom: 10px; width: 100%; text-align: center; font-size: 8px; color: rgba(255,255,255,0.5); pointer-events: none; z-index: 999; text-shadow: 1px 1px 2px #000; }
+        #dev-btn-style { background:#ff4757; padding:5px; width:auto; font-size:10px; margin-top:5px; pointer-events:auto; display:inline-block; }
+        #copyright { position: absolute; bottom: 10px; width: 100%; text-align: center; font-size: 8px; color: rgba(255,255,255,0.5); pointer-events: none; z-index: 999; }
     </style>
 </head>
 <body>
 <div id="game-container">
     <div id="hud">
         <div style="float:left">
-            LEVEL: <span id="lvl-info">1 (WARMUP)</span><br>
+            LEVEL: <span id="lvl-info">1 - WARMUP</span><br>
+            PROGRESS: <span id="mug-progress">0 / 0</span><br>
             SPILL: <span id="w">0</span>ml
-            <div id="adm-container"></div>
+            <div id="dev-container"></div>
         </div>
         <div style="float:right; text-align:right">
             SCORE: <span id="curr-score" style="color:#0f0">0</span><br>
-            LOCAL HIGHSCORE: <span id="best-score">0</span><br>
-            WORLD HIGHSCORE: 300 (<span style="color:#ffd700">SantaClaus88</span>)
+            LOCAL BEST: <span id="best-score">0</span><br>
+            <span id="world-label" style="display:none">WORLD BEST: <span id="world-score">0</span> (<span id="world-name" style="color:#ffd700">...</span>)</span>
         </div>
         <div style="clear:both"></div>
     </div>
-    <div id="pf">PERFECT!</div>
-    <div id="missed">✘</div>
-    <div id="level-start" style="display:none">
-        <div id="ls-content">
-            <h1 id="ls-title">LEVEL 1</h1>
-            <h2 id="ls-theme">...</h2>
-            <button onclick="startLevel()">START</button>
-        </div>
-    </div>
-    <div id="lr">
-        <h2 id="lr-title">STATION REPORT</h2>
-        <div id="stars">☆☆☆☆☆</div>
-        <span id="vibe-label">...</span>
-        <div class="stat-row"><span>VOLUME FILLED:</span><span id="lr-acc">0%</span></div>
-        <div class="stat-row"><span>SPILL:</span><span id="lr-waste">0ml</span></div>
-        <button id="lr-btn" onclick="handleLR()">CONTINUE</button>
-    </div>
+    <div id="pf">PERFECT!</div><div id="missed">✘</div>
+    <div id="level-start"><div id="ls-content"><h1 id="ls-title">LEVEL 1</h1><h2 id="ls-theme">...</h2><button onclick="startLevel()">START</button></div></div>
+    <div id="game-over"><div id="go-content"><h1>CONGRATULATIONS!</h1><p>You mastered every station.</p><h2>TOTAL SCORE: <span id="final-score" style="color:#0f0">0</span></h2><button onclick="location.reload()">PLAY AGAIN</button></div></div>
+    <div id="lr"><h2 id="lr-title">LEVEL REPORT</h2><div id="stars">☆☆☆☆☆</div><span id="vibe-label">...</span><div id="stats-area"><div class="stat-row"><span>VOLUME FILLED:</span><span id="lr-acc">0%</span></div><div class="stat-row"><span>SPILL:</span><span id="lr-waste">0ml</span></div></div><button id="lr-btn" onclick="handleLR()">CONTINUE</button></div>
     <canvas id="c"></canvas>
-    <!-- FIXED COPYRIGHT HTML -->
     <div id="copyright">© <span id="year"></span> Spill Engine. All Rights Reserved.</div>
 </div>
 
 <script>
+let ADMIN = 0; 
+const sdk = window.CrazyGames ? window.CrazyGames.SDK : null;
 const LevelConfigs = [
-    { n: "WARMUP", c: "#39ff14", bg: "lab.jpeg", delay: 0, mugs: [{w:200, h:40, s:0.6}], gc: "#f5f5f7"},
-    { n: "OIL", c: "#1a1a1a", bg: "oil.jpeg", delay: 540, mugs: [{w:60, h:100, s:0.4}, {w:80, h:110, s:0.4}, {w:70, h:90, s:0.6}, {w:130, h:70, s:0.5}, {w:60, h:100, s:0.6}], gc: "#f5f5f7"},
-    { n: "COCONUTS", c: "#ffffff", bg: "coconuts.jpeg", delay: 250, mugs: [{w:95, h:75, s:0.6},  {w:75, h:75, s:0.7}, {w:85, h:65, s:0.65}, {w:65, h:75, s:0.7}, {w:75, h:75, s:0.6}, {w:60, h:75, s:0.8}, {w:75, h:75, s:0.7}  ], gc: "#2d1b14"},
-    { n: "VOLCANO", c: "#ff4500", bg: "volcano.jpeg", delay: 450, mugs: [{w:50, h:120, s:0.60}, {w:120, h:50, s:0.4}, {w:60, h:100, s:0.65}, {w:90, h:90, s:0.55}, {w:70, h:110, s:0.75}], gc: "#1a0a05"},
-    { n: "RADIOACTIVE", c: "#39ff14", bg: "radioactive.jpeg", delay: 450, mugs: [{w:100, h:100, s:0.6}, {w:60, h:60, s:0.8}, {w:90, h:110, s:0.7}, {w:80, h:100, s:0.6}, {w:60, h:110, s:0.8}], gc: "#333333"},
-    { n: "SPACE", c: "#71797E", bg: "space.jpeg", delay: 430, mugs: [{w:110, h:110, s:0.6}, {w:60, h:150, s:0.7}, {w:140, h:60, s:0.5}, {w:80, h:120, s:0.65}, {w:100, h:90, s:0.8}], gc: "#000000"},
-    { n: "ORANGE", c: "#ff8c00", bg: "orange.jpeg", delay: 220, mugs:  [{w:75, h:55, s:0.5},  {w:75, h:40, s:0.6}, {w:80, h:55, s:0.55}, {w:65, h:55, s:0.6}, {w:75, h:65, s:0.5}, {w:75, h:45, s:0.7}, {w:80, h:75, s:0.7}, {w:75, h:65, s:0.6}, {w:85, h:65, s:0.5}  ], gc: "#ffffff"},
-    { n: "MAGIC", c: "#800080", bg: "magic.jpeg", delay: 410, mugs: [{w:60, h:120, s:0.7}, {w:150, h:50, s:0.45}, {w:80, h:120, s:0.65}, {w:110, h:110, s:0.6}, {w:70, h:120, s:0.7}, {w:90, h:110, s:0.7}, {w:80, h:120, s:0.8}], gc: "#000000"},
-    { n: "BOTANICAL", c: "#add8e6", bg: "botanical.jpeg", delay: 370, mugs: [{w:100, h:100, s:0.6}, {w:80, h:120, s:0.7}, {w:120, h:80, s:0.55}, {w:90, h:110, s:0.65}, {w:110, h:110, s:0.7}, {w:90, h:110, s:0.7}, {w:80, h:130, s:0.8}], gc: "#1a3c1a"},
-    { n: "CARIBBEAN", c: "#f0e68c", bg: "caribbean.jpeg", delay: 350, mugs: [{w:120, h:70, s:0.55}, {w:70, h:110, s:0.75}, {w:100, h:100, s:0.65}, {w:85, h:120, s:0.7}, {w:140, h:60, s:0.5}, {w:90, h:110, s:0.7}, {w:80, h:110, s:0.8}], gc: "#add8e6"}
+    { n: "WARMUP", c: "#39ff14", delay: 0, mugs: [{w:200, h:40, s:0.6}], gc: "#f5f5f7"},
+    { n: "OIL", c: "#1a1a1a", delay: 540, mugs: [{w:60, h:100, s:0.4}, {w:80, h:110, s:0.4}, {w:70, h:90, s:0.6}, {w:130, h:70, s:0.5}, {w:60, h:100, s:0.6}], gc: "#f5f5f7"},
+    { n: "COCONUTS", c: "#ffffff", delay: 250, mugs: [{w:95, h:75, s:0.6},  {w:75, h:75, s:0.7}, {w:85, h:65, s:0.65}, {w:65, h:75, s:0.7}, {w:75, h:75, s:0.6}, {w:60, h:75, s:0.8}, {w:75, h:75, s:0.7}  ], gc: "#2d1b14"},
+    { n: "VOLCANO", c: "#ff4500", delay: 450, mugs: [{w:50, h:120, s:0.60}, {w:120, h:50, s:0.4}, {w:60, h:100, s:0.65}, {w:90, h:90, s:0.55}, {w:70, h:110, s:0.75}], gc: "#1a0a05"},
+    { n: "RADIOACTIVE", c: "#39ff14", delay: 450, mugs: [{w:100, h:100, s:0.6}, {w:60, h:60, s:0.8}, {w:90, h:110, s:0.7}, {w:80, h:100, s:0.6}, {w:60, h:110, s:0.8}], gc: "#333333"},
+    { n: "SPACE", c: "#71797E", delay: 430, mugs: [{w:110, h:110, s:0.6}, {w:60, h:150, s:0.7}, {w:140, h:60, s:0.5}, {w:80, h:120, s:0.65}, {w:100, h:90, s:0.8}], gc: "#000000"},
+    { n: "ORANGE", c: "#ff8c00", delay: 220, mugs:  [{w:75, h:55, s:0.5},  {w:75, h:40, s:0.6}, {w:80, h:55, s:0.55}, {w:65, h:55, s:0.6}, {w:75, h:65, s:0.5}, {w:75, h:45, s:0.7}, {w:80, h:75, s:0.7}, {w:75, h:65, s:0.6}, {w:85, h:65, s:0.5}  ], gc: "#ffffff"},
+    { n: "MAGIC", c: "#800080", delay: 410, mugs: [{w:60, h:120, s:0.7}, {w:150, h:50, s:0.45}, {w:80, h:120, s:0.65}, {w:110, h:110, s:0.6}, {w:70, h:120, s:0.7}, {w:90, h:110, s:0.7}, {w:80, h:120, s:0.8}], gc: "#000000"},
+    { n: "BOTANICAL", c: "#add8e6", delay: 370, mugs: [{w:100, h:100, s:0.6}, {w:80, h:120, s:0.7}, {w:120, h:80, s:0.55}, {w:90, h:110, s:0.65}, {w:110, h:110, s:0.7}, {w:90, h:110, s:0.7}, {w:80, h:130, s:0.8}], gc: "#1a3c1a"},
+    { n: "CARIBBEAN", c: "#f0e68c", delay: 350, mugs: [{w:120, h:70, s:0.55}, {w:70, h:110, s:0.75}, {w:100, h:100, s:0.65}, {w:85, h:120, s:0.7}, {w:140, h:60, s:0.5}, {w:90, h:110, s:0.7}, {w:80, h:110, s:0.8}], gc: "#add8e6"},
+    { n: "TOMATO", c: "#FF0000", delay: 200, mugs: [{w:75, h:55, s:0.9},  {w:75, h:40, s:0.6}, {w:80, h:55, s:0.55}, {w:65, h:55, s:0.8}, {w:75, h:65, s:0.5}, {w:75, h:45, s:0.7}, {w:80, h:75, s:0.8}, {w:75, h:65, s:0.6}, {w:85, h:65, s:0.9}, {w:75, h:55, s:0.5},  {w:75, h:40, s:0.6}, {w:80, h:55, s:0.8}, {w:65, h:55, s:0.6}, {w:75, h:65, s:0.9}, {w:75, h:45, s:0.7}, {w:80, h:75, s:0.7}, {w:75, h:65, s:0.9}, {w:85, h:65, s:0.5}, {w:75, h:55, s:0.5},  {w:75, h:40, s:0.8}, {w:80, h:55, s:0.9}, {w:65, h:55, s:0.6}, {w:75, h:65, s:0.8}, {w:75, h:45, s:0.7}, {w:80, h:75, s:0.7}, {w:75, h:65, s:0.9}, {w:85, h:65, s:0.7}], gc: "#000000"}
 ];
 
-let ADMIN=0,canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+let canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
 canvas.width=360;canvas.height=640;
-let b={x:canvas.width/2+20,y:260,w:70,h:80,a:0},ps=[],fx=[],globalWaste=0,active=false,bps=[],spawnTimer=10,mugCount=0,lastPour=0,isDragging=false,saturation=0,targetA=0,currentLevel=1,levelMugsProcessed=0,levelTotalFill=0,levelTotalCap=0,shake=0;
+let b={x:canvas.width/2+20,y:260,w:70,h:80,a:0},ps=[],globalWaste=0,active=false,bps=[],spawnTimer=10,mugCount=0,lastPour=0,isDragging=false,saturation=0,targetA=0,currentLevel=1,levelMugsProcessed=0,levelTotalFill=0,levelTotalCap=0,shake=0;
 let score=0, bestScore=parseInt(localStorage.getItem('spill_total_score'))||0;
 
-document.getElementById('best-score').innerText = bestScore;
-document.getElementById('year').innerText = new Date().getFullYear();
+if(ADMIN===1){ document.getElementById('dev-container').innerHTML = `<button id="dev-btn-style" onclick="skipLevel()">SKIP LEVEL</button>`; }
 
-if(ADMIN===1){
-    document.getElementById('adm-container').innerHTML = `<button id="adm-btn-style" onclick="skipLevel()">SKIP LEVEL</button>`;
+async function initGame() {
+    if (sdk) { try { await sdk.init(); updateLeaderboard(); } catch (e) {} }
+    updateTheme(); draw();
+}
+
+async function updateLeaderboard() {
+    if(!sdk) return;
+    try {
+        const res = await sdk.leaderboard.getRecords('main', {limit:1});
+        if(res.items && res.items.length){
+            document.getElementById('world-label').style.display = 'inline';
+            document.getElementById('world-score').innerText = res.items.score;
+            document.getElementById('world-name').innerText = res.items.username;
+        }
+    } catch(e){}
 }
 
 function updateTheme(){
     const t=LevelConfigs[currentLevel-1];
-    const ls=document.getElementById('level-start');
-    const gc=document.getElementById('game-container');
-    ls.style.backgroundImage=`url('${t.bg}')`;ls.style.display='flex';
-    gc.style.backgroundColor = t.gc;
     document.getElementById('ls-title').innerText=`Level ${currentLevel}`;
     document.getElementById('ls-theme').innerText=t.n;
-    document.getElementById('lvl-info').innerText=`${currentLevel} (${t.n})`;
+    document.getElementById('lvl-info').innerText=currentLevel + " - " + t.n;
+    document.getElementById('mug-progress').innerText = `0 / ${t.mugs.length}`;
+    document.getElementById('game-container').style.backgroundColor = t.gc;
+    document.getElementById('level-start').style.backgroundColor = t.gc;
+    document.getElementById('level-start').style.display='flex';
     active=false;
 }
 
-function startLevel(){document.getElementById('level-start').style.display='none';active=true;spawnTimer=40}
+function startLevel(){document.getElementById('level-start').style.display='none';active=true;spawnTimer=1}
 
 function createBP(){
     const lvl=LevelConfigs[currentLevel-1];
     if(mugCount>=lvl.mugs.length)return;
     const dna=lvl.mugs[mugCount];
     const autoCap = Math.floor((dna.w * dna.h) * 0.015);
-    bps.push({x:-140,y:canvas.height-170-dna.h,w:dna.w,h:dna.h,speed:dna.s,cap:autoCap,fill:0,pIn:0,pOut:0,perf:false,proc:false,forgive:0,fxTimer:120});
+    bps.push({x:-70,y:canvas.height-170-dna.h,w:dna.w,h:dna.h,speed:dna.s,cap:autoCap,fill:0,proc:false,perf:false,forgive:0});
     spawnTimer=lvl.delay;mugCount++;
 }
 
 function handleLR(){
     const adj=document.getElementById('vibe-label').innerText;
-    let points = 0;
-    if(adj === "Flawless!") points = 300;
-    else if(adj === "Groovy") points = 200;
-    else if(adj === "Good") points = 100;
+    let pts = (adj === "Flawless!" ? 300 : (adj === "Groovy" ? 200 : (adj === "Good" ? 100 : 0)));
     
-    if(points > 0){
-        score += points;
-        document.getElementById('curr-score').innerText = score;
-        if(score > bestScore){
-            bestScore = score;
-            localStorage.setItem('spill_total_score', bestScore);
-            document.getElementById('best-score').innerText = bestScore;
-        }
-    }
+    // BALANCED ADS LOGIC
+    const isWin = pts > 0;
+    const isFail = !isWin && adj !== "";
+    let triggerAd = false;
+    if(currentLevel >= 4 && currentLevel <= 9 && isWin) triggerAd = true;
+    if(currentLevel >= 10 && isFail) triggerAd = true;
 
-    document.getElementById('lr').style.display='none';
-    const pass = points > 0;
-    if(pass || ADMIN===1){
-        currentLevel++;
-        if(currentLevel>LevelConfigs.length)currentLevel=1;
-        resetLevel(currentLevel);
-    } else {
-        resetLevel(currentLevel);
-    }
+    const finalize = () => {
+        if(isWin){
+            score += pts;
+            document.getElementById('curr-score').innerText = score;
+            if(score > bestScore){
+                bestScore = score; localStorage.setItem('spill_total_score', bestScore);
+                document.getElementById('best-score').innerText = bestScore;
+                if(sdk) sdk.user.isUserLoggedIn().then(l => { if(l) sdk.user.syncScore(bestScore); });
+            }
+            if(currentLevel >= LevelConfigs.length){
+                document.getElementById('final-score').innerText = score;
+                document.getElementById('game-over').style.display = 'flex';
+            } else { currentLevel++; resetLevel(currentLevel); }
+        } else { resetLevel(currentLevel); }
+        document.getElementById('lr').style.display='none';
+    };
+
+    if(sdk && triggerAd){ sdk.ad.requestAd('midroll', { adFinished: finalize, adError: finalize }); }
+    else { finalize(); }
 }
 
 function skipLevel(){
-    currentLevel++;
-    if(currentLevel>LevelConfigs.length)currentLevel=1;
-    resetLevel(currentLevel);
+    if(currentLevel >= LevelConfigs.length){
+        document.getElementById('final-score').innerText = score;
+        document.getElementById('game-over').style.display = 'flex';
+    } else { currentLevel++; resetLevel(currentLevel); }
 }
 
 function resetLevel(lvl){
-    currentLevel=lvl;mugCount=0;levelMugsProcessed=0;globalWaste=0;levelTotalFill=0;levelTotalCap=0;ps=[];fx=[];
-    bps=[];active=false;spawnTimer=10;shake=0;
+    currentLevel=lvl;mugCount=0;levelMugsProcessed=0;globalWaste=0;levelTotalFill=0;levelTotalCap=0;ps=[];bps=[];active=false;spawnTimer=10;shake=0;
     document.getElementById('missed').style.display='none';
     document.getElementById('w').innerText="0";
+    document.getElementById('w').classList.remove('flash-red');
     updateTheme();
 }
 
 function showLR(eff,acc,waste,failed=false){
-    active=false;document.getElementById('lr').style.display='block';
-    let dAcc=acc>=98?100:acc;document.getElementById('lr-acc').innerText=dAcc+"%";
-    let w=Math.floor(waste);document.getElementById('lr-waste').innerText=w+"ml";
-    let s="★☆☆☆☆",adj="Messy...";
-    if(!failed){
-        if(w===0){s="★★★★★";adj="Flawless!"}
+    active=false; displayLR(acc, waste, failed);
+}
+
+function displayLR(acc, waste, failed, customMsg = ""){
+    document.getElementById('lr').style.display='block';
+    let dAcc=acc>=98?100:acc; document.getElementById('lr-acc').innerText=dAcc+"%";
+    let w=Math.floor(waste); document.getElementById('lr-waste').innerText=w+"ml";
+    let s="★☆☆☆☆",adj="";
+    
+    document.getElementById('lr-title').style.display = 'block';
+    document.getElementById('stats-area').style.display = 'block';
+    document.getElementById('stars').style.display = 'block';
+
+    if(customMsg === "TOO MUCH SPILL!") {
+        adj = customMsg; document.getElementById('lr-title').style.display = 'none';
+        document.getElementById('stats-area').style.display = 'none'; document.getElementById('stars').style.display = 'none';
+    } else if(!failed && w <= 20){
+        if(w===0){s="★★★★★";adj="Flawless!"; if(sdk) sdk.game.happyTime();}
         else if(w<=10){s="★★★★☆";adj="Groovy"}
         else if(w<=20){s="★★★☆☆";adj="Good"}
-    } else { adj="FAILED"; }
-    document.getElementById('stars').innerText=s;document.getElementById('vibe-label').innerText=adj;
-    document.getElementById('lr-btn').innerText=(adj==="Messy..." || adj==="FAILED") && ADMIN!==1 ?"RETRY":"CONTINUE";
+    } else { adj=customMsg || "FAILED"; document.getElementById('stars').style.display = 'none'; }
+    
+    document.getElementById('stars').innerText=s; document.getElementById('vibe-label').innerText=adj;
+    document.getElementById('lr-btn').innerText=(adj==="FAILED" || adj==="TOO MUCH SPILL!") ?"RETRY":"CONTINUE";
 }
 
 function drawCyl(x,y,w,h,fV,cap,col,isP,angle=0){
@@ -199,8 +221,7 @@ function drawCyl(x,y,w,h,fV,cap,col,isP,angle=0){
     }
     if(!isP && fV > 0 && x > 0 && x < canvas.width){
         ctx.fillStyle = "#0f0"; ctx.font = "bold 14px monospace"; ctx.textAlign = "center";
-        let perc = Math.min(100, Math.floor((fV/cap)*100));
-        ctx.fillText(perc + "%", x, y - 20);
+        ctx.fillText(Math.min(100, Math.floor((fV/cap)*100)) + "%", x, y - 20);
     }
 }
 
@@ -209,66 +230,98 @@ function draw(){
     if(shake>0){ctx.translate(Math.random()*shake-shake/2, Math.random()*shake-shake/2); shake *= 0.9;}
     ctx.clearRect(0,0,canvas.width,canvas.height);
     b.a+=(targetA-b.a)*0.15;
+    
+    // CONVEYOR BELT
     ctx.lineWidth = 14;
     let beltG = ctx.createLinearGradient(0, canvas.height - 172, 0, canvas.height - 158);
     beltG.addColorStop(0, "#1a1c1d"); beltG.addColorStop(0.5, "#4a4e50"); beltG.addColorStop(1, "#1a1c1d");
     ctx.strokeStyle = beltG;
     ctx.beginPath(); ctx.moveTo(0, canvas.height - 165); ctx.lineTo(canvas.width, canvas.height - 165); ctx.stroke();
-    if(active){spawnTimer--;if(spawnTimer<=0)createBP()}
+    
+    // HUD ALERTS
+    if(globalWaste > 15) document.getElementById('w').classList.add('flash-red');
+    
+    // HUD COUNTER UPDATE
+    document.getElementById('mug-progress').innerText = levelMugsProcessed + " / " + t.mugs.length;
+
+    // FAIL CHECK (>20.9ml)
+    if(active && globalWaste > 20.9){ 
+        active = false; isDragging = false; targetA = 0; shake = 25;
+        document.getElementById('missed').innerText = "✘";
+        document.getElementById('missed').style.display = 'block';
+        setTimeout(() => displayLR(Math.floor((levelTotalFill/levelTotalCap)*100), globalWaste, true, "TOO MUCH SPILL!"), 800);
+    }
+
+    if(active){spawnTimer--; if(spawnTimer<=0)createBP();}
+
+    // MUG LOGIC
     bps.forEach(c=>{
         if(active) c.x+=c.speed;
         drawCyl(c.x,c.y,c.w,c.h,c.fill,c.cap,t.c,false);
-        if(c.fill>=c.cap && c.pOut < 1 && !c.perf){
-            c.perf=true;
+        
+        // INSTANT COUNTER UPDATE ON FILL
+        if(c.fill>=c.cap && !c.perf){
+            c.perf = true;
+            levelMugsProcessed++; 
             if(currentLevel === 1) {
                 document.getElementById('pf').style.display='block';
                 setTimeout(()=>document.getElementById('pf').style.display='none',1000);
             }
         }
+        
+        // MISS CHECK
         if(c.x > canvas.width + 10 && c.fill < c.cap && !c.proc){
             active = false; shake=25; document.getElementById('missed').style.display='block';
-            setTimeout(()=>showLR(0,Math.floor((c.fill/c.cap)*100),globalWaste, true), 800);
+            setTimeout(()=>displayLR(Math.floor((c.fill/c.cap)*100),globalWaste, true), 800);
             c.proc = true;
         }
+
+        // REMOVE FROM SCREEN & CHECK LEVEL END
         if(c.x>canvas.width+150&&!c.proc){
-            c.proc=true;levelMugsProcessed++;levelTotalFill+=Math.min(c.cap,c.fill);levelTotalCap+=c.cap;
-            if(levelMugsProcessed===t.mugs.length){showLR(0,Math.floor((levelTotalFill/levelTotalCap)*100),globalWaste)}
+            c.proc = true;
+            levelTotalFill += Math.min(c.cap, c.fill);
+            levelTotalCap += c.cap;
+            // Level is over only when the final mug has been filled/processed
+            if(levelMugsProcessed === t.mugs.length){
+                showLR(0, Math.floor((levelTotalFill/levelTotalCap)*100), globalWaste);
+            }
         }
     });
+
+    // CARAFE
     ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.a);
     let hG=ctx.createLinearGradient(b.w/2,-20,b.w/2+15,20);hG.addColorStop(0,"#4a4e50");hG.addColorStop(0.5,"#71797E");hG.addColorStop(1,"#4a4e50");
     ctx.strokeStyle=hG;ctx.lineWidth=6;ctx.beginPath();ctx.arc(b.w/2,0,15,-Math.PI/2,Math.PI/2);ctx.stroke();
     drawCyl(0,-b.h/2+10,b.w,b.h-20,68,100,t.c,true,b.a);ctx.restore();
+
+    // POURING
     if(isDragging&&b.a<-0.15&&active){
         let n=Date.now(); saturation=Math.min(1,saturation+0.04);
         let iv=Math.max(15,120-(Math.abs(b.a)*100)-(saturation*40));
         let cosA=Math.cos(b.a), sinA=Math.sin(b.a), lipX=b.x+(-b.w/2*cosA - (-b.h/2+10)*sinA), lipY=b.y+(-b.w/2*sinA + (-b.h/2+10)*cosA);
         ctx.fillStyle=t.c;ctx.beginPath();ctx.arc(lipX, lipY, 7, 0, Math.PI*2);ctx.fill();
         if(n-lastPour>iv){
-            let vy = t.n==="OIL"?1.5:2.0;
-            ps.push({x:lipX,y:lipY,startY:lipY,vx:b.a*1.3,vy:vy,life:180,landed:false,p:false,inL:false});
+            ps.push({x:lipX,y:lipY,startY:lipY,vx:b.a*1.3,vy:t.n==="OIL"?0.15:0.25,life:180,landed:false,p:false,inL:false});
             lastPour=n;
         }
     }else saturation=Math.max(0,saturation-0.05);
+
+    // PHYSICS & SPILL
     for(let i=ps.length-1;i>=0;i--){
         let p=ps[i];
         if(!p.landed){
             p.vy+= t.n==="OIL"?0.15:0.25; p.x+=p.vx; p.y+=p.vy; p.r = Math.min(14, 6 + (Math.abs(p.y - p.startY) / 50) * 8);
-            let dropCaught = false;
             for(let j=0; j<bps.length; j++){
                 let c = bps[j];
                 let sY=c.y+c.h-((c.fill/c.cap)*c.h);
                 if(p.x>c.x-c.w/2-30&&p.x<c.x+c.w/2+30&&p.y>sY-15&&p.y<c.y+c.h+15){
-                    if(c.fill<c.cap){ if(!p.inL){c.fill+=1.5;p.inL=true} ps.splice(i,1); dropCaught=true; break; }
-                    else if(c.forgive<8){c.forgive++;ps.splice(i,1); dropCaught=true; break; }
+                    if(c.fill<c.cap){ if(!p.inL){c.fill+=1.5;p.inL=true} ps.splice(i,1); break; }
+                    else if(c.forgive<8){c.forgive++;ps.splice(i,1); break; }
                 }
             }
-            if(!dropCaught && p.y>canvas.height-165 && !p.p){
-                p.landed=true;p.y=canvas.height-163;globalWaste+=1;p.p=true;
-            }
+            if(p.y>canvas.height-165 && !p.p){ p.landed=true;p.y=canvas.height-163;globalWaste+=1;p.p=true; }
         }
-        ctx.fillStyle = t.c;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r || 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = t.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r || 5, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = "rgba(255,255,255,0.45)"; 
         ctx.beginPath(); ctx.ellipse(p.x - (p.r || 5)/3, p.y - (p.r || 5)/3, (p.r || 5)/2, (p.r || 5)/4, Math.PI/4, 0, Math.PI*2); ctx.fill();
         if(p.landed){ p.life--; if(p.life <= 0) ps.splice(i, 1); }
@@ -276,10 +329,12 @@ function draw(){
     document.getElementById('w').innerText = Math.floor(globalWaste);
     ctx.restore(); requestAnimationFrame(draw);
 }
-canvas.onmousedown = canvas.ontouchstart = e => { e.preventDefault(); isDragging = true; targetA = -0.8; };
+
+// CONTROLS
+canvas.onmousedown = canvas.ontouchstart = e => { e.preventDefault(); if(active) { isDragging = true; targetA = -0.8; } };
 window.onmouseup = window.ontouchend = () => { isDragging = false; targetA = 0; };
-updateTheme(); draw();
+
+initGame();
 </script>
 </body>
 </html>
-
