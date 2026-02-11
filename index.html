@@ -171,7 +171,51 @@ function updateTheme(){
     active=false;
 }
 
-function startLevel(){document.getElementById('level-start').style.display='none';active=true;spawnTimer=1}
+function startLevel(){
+
+	 const t = LevelConfigs[currentLevel-1];
+    
+	    // 1. Target the Container (The frame)
+	    const container = document.getElementById('game-container');
+	    if (container) {
+		container.style.background = t.gc; // Use 'background' to override any gradients
+		container.style.backgroundColor = t.gc;
+	    }
+
+	    // 2. Target the Canvas (The play area)
+	    const c = document.getElementById('c');
+	    if (c) {
+		c.style.background = t.gc;
+		c.style.backgroundColor = t.gc;
+	    }
+  
+	document.getElementById('level-start').style.display='none';
+	active=true;
+	spawnTimer=1;
+	if (currentLevel === 1 && !hasEverShownHint) {
+	    hasEverShownHint = true; // Lock it instantly
+	    const hint = document.getElementById('pour-hint');
+
+	    if (hint) {
+		// Step 1: Wait 2 seconds for the mug to settle
+		setTimeout(() => {
+		    hint.style.display = 'block';
+		    setTimeout(() => { hint.style.opacity = '1'; }, 50);
+
+		    // Step 2: Keep it visible for 4 seconds, then kill it
+		    setTimeout(() => {
+		        hint.style.transition = "opacity 1s"; // Slow, elegant fade
+		        hint.style.opacity = "0";
+		        
+		        // Step 3: Remove from world after fade
+		        setTimeout(() => { 
+		            hint.style.display = 'none'; 
+		        }, 1000);
+		    }, 2000); 
+		}, 2000);
+	    }
+	} 
+	}
 
 function createBP(){
     const lvl=LevelConfigs[currentLevel-1];
@@ -298,162 +342,183 @@ function drawCyl(x,y,w,h,fV,cap,col,isP,angle=0){
     }
 }
 
-function draw(){
-    const t=LevelConfigs[currentLevel-1];ctx.save();
-    if(shake>0){ctx.translate(Math.random()*shake-shake/2, Math.random()*shake-shake/2); shake *= 0.9;}
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    b.a+=(targetA-b.a)*0.15;
+let lastTime = performance.now();
+
+function draw() {
+    let currentTime = performance.now();
+    let dt = (currentTime - lastTime) / 16.66; 
+    if (dt > 2) dt = 1;
+    lastTime = currentTime;
+
+    const t = LevelConfigs[currentLevel-1];
+    ctx.save();
+
+    if(shake > 0) {
+        ctx.translate(Math.random()*shake - shake/2, Math.random()*shake - shake/2); 
+        shake *= 0.9;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    b.a += (targetA - b.a) * 0.15 * dt;
     
     // CONVEYOR BELT
     ctx.lineWidth = 14;
-    let beltG = ctx.createLinearGradient(0, canvas.height - 172, 0, canvas.height - 158);
+    let beltY = canvas.height - 165;
+    let beltG = ctx.createLinearGradient(0, beltY - 7, 0, beltY + 7);
     beltG.addColorStop(0, "#1a1c1d"); beltG.addColorStop(0.5, "#4a4e50"); beltG.addColorStop(1, "#1a1c1d");
     ctx.strokeStyle = beltG;
-    ctx.beginPath(); ctx.moveTo(0, canvas.height - 165); ctx.lineTo(canvas.width, canvas.height - 165); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, beltY); ctx.lineTo(canvas.width, beltY); ctx.stroke();
     
-    // HUD ALERTS
-    if(globalWaste > 15) document.getElementById('w').classList.add('flash-red');
-    
-    // HUD COUNTER UPDATE
     document.getElementById('mug-progress').innerText = levelMugsProcessed + " / " + t.mugs.length;
 
-    // FAIL CHECK (>20.9ml)
+    // FAIL CHECK
     if(active && globalWaste > 20.9){ 
         active = false; isDragging = false; targetA = 0; shake = 25;
-        document.getElementById('missed').innerText = "✘";
         document.getElementById('missed').style.display = 'block';
         setTimeout(() => displayLR(Math.floor((levelTotalFill/levelTotalCap)*100), globalWaste, true, "TOO MUCH SPILL!"), 800);
     }
 
     if(active){
-    	spawnTimer--; if(spawnTimer<=0)createBP();
-	    if (currentLevel === 1 && !hasEverShownHint) {
-	    hasEverShownHint = true; // Lock it instantly
-	    const hint = document.getElementById('pour-hint');
-
-	    if (hint) {
-		// Step 1: Wait 2 seconds for the mug to settle
-		setTimeout(() => {
-		    hint.style.display = 'block';
-		    setTimeout(() => { hint.style.opacity = '1'; }, 50);
-
-		    // Step 2: Keep it visible for 4 seconds, then kill it
-		    setTimeout(() => {
-		        hint.style.transition = "opacity 1s"; // Slow, elegant fade
-		        hint.style.opacity = "0";
-		        
-		        // Step 3: Remove from world after fade
-		        setTimeout(() => { 
-		            hint.style.display = 'none'; 
-		        }, 1000);
-		    }, 2000); 
-		}, 2000);
-	    }
-	} 
+        spawnTimer -= dt; 
+        if(spawnTimer <= 0) createBP();
     }
     
-    // MUG LOGIC
-    bps.forEach(c=>{
-        if(active) c.x+=c.speed;
-        drawCyl(c.x,c.y,c.w,c.h,c.fill,c.cap,t.c,false);
+    // MUGS
+    bps.forEach(c => {
+        if(active) c.x += c.speed * dt;
+        drawCyl(c.x, c.y, c.w, c.h, c.fill, c.cap, t.c, false);
         
-        // INSTANT COUNTER UPDATE ON FILL
-        if(c.fill>=c.cap && !c.perf){
+        if(c.fill >= c.cap && !c.perf){
             c.perf = true;
             levelMugsProcessed++; 
             if(currentLevel === 1) {
-                document.getElementById('pf').style.display='block';
-                setTimeout(()=>document.getElementById('pf').style.display='none',1000);
+                document.getElementById('pf').style.display = 'block';
+                setTimeout(() => document.getElementById('pf').style.display = 'none', 1000);
             }
         }
         
-        // MISS CHECK
         if(c.x > canvas.width + 10 && c.fill < c.cap && !c.proc){
-            active = false; shake=25; document.getElementById('missed').style.display='block';
-            setTimeout(()=>displayLR(Math.floor((c.fill/c.cap)*100),globalWaste, true), 800);
+            active = false; shake = 25; document.getElementById('missed').style.display = 'block';
+            setTimeout(() => displayLR(Math.floor((c.fill/c.cap)*100), globalWaste, true), 800);
             c.proc = true;
         }
 
-        // REMOVE FROM SCREEN & CHECK LEVEL END
-        if(c.x>canvas.width+10&&!c.proc){
+        if(c.x > canvas.width + 10 && !c.proc){
             c.proc = true;
             levelTotalFill += Math.min(c.cap, c.fill);
             levelTotalCap += c.cap;
-            // Level is over only when the final mug has been filled/processed
-            if(levelMugsProcessed === t.mugs.length){
-                showLR(0, Math.floor((levelTotalFill/levelTotalCap)*100), globalWaste);
-            }
+            if(levelMugsProcessed === t.mugs.length) showLR(0, Math.floor((levelTotalFill/levelTotalCap)*100), globalWaste);
         }
     });
 
-    // CARAFE
-    ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.a);
-    let hG=ctx.createLinearGradient(b.w/2,-20,b.w/2+15,20);hG.addColorStop(0,"#4a4e50");hG.addColorStop(0.5,"#71797E");hG.addColorStop(1,"#4a4e50");
-    ctx.strokeStyle=hG;ctx.lineWidth=6;ctx.beginPath();ctx.arc(b.w/2,0,15,-Math.PI/2,Math.PI/2);ctx.stroke();
-    drawCyl(0,-b.h/2+10,b.w,b.h-20,68,100,t.c,true,b.a);ctx.restore();
+    // CARAFE / TEAPOT + HANDLE
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.rotate(b.a);
+    
+    // The Handle
+    let hG = ctx.createLinearGradient(b.w/2, -20, b.w/2 + 15, 20);
+    hG.addColorStop(0, "#4a4e50"); hG.addColorStop(0.5, "#71797E"); hG.addColorStop(1, "#4a4e50");
+    ctx.strokeStyle = hG;
+    ctx.lineWidth = 6;
+    ctx.beginPath(); 
+    ctx.arc(b.w/2, 0, 15, -Math.PI/2, Math.PI/2); 
+    ctx.stroke();
+    
+    drawCyl(0, -b.h/2 + 10, b.w, b.h - 20, 68, 100, t.c, true, b.a);
+    ctx.restore();
 
     // POURING
-    if(isDragging&&b.a<-0.15&&active){
-        let n=Date.now(); saturation=Math.min(1,saturation+0.04);
-        let iv=Math.max(15,120-(Math.abs(b.a)*100)-(saturation*40));
-        let cosA=Math.cos(b.a), sinA=Math.sin(b.a), lipX=b.x+(-b.w/2*cosA - (-b.h/2+10)*sinA), lipY=b.y+(-b.w/2*sinA + (-b.h/2+10)*cosA);
-        ctx.fillStyle=t.c;ctx.beginPath();ctx.arc(lipX, lipY, 7, 0, Math.PI*2);ctx.fill();
-        if(n-lastPour>iv){
-            ps.push({x:lipX,y:lipY,startY:lipY,vx:b.a*1.3,vy:t.n==="OIL"?0.15:0.25,life:180,landed:false,p:false,inL:false});
-            lastPour=n;
+    if(isDragging && b.a < -0.15 && active){
+        let n = Date.now(); 
+        saturation = Math.min(1, saturation + 0.04 * dt);
+        let iv = Math.max(15, 120 - (Math.abs(b.a) * 100) - (saturation * 40));
+        let cosA = Math.cos(b.a), sinA = Math.sin(b.a);
+        let lipX = b.x + (-b.w/2 * cosA - (-b.h/2 + 10) * sinA);
+        let lipY = b.y + (-b.w/2 * sinA + (-b.h/2 + 10) * cosA);
+        
+        ctx.fillStyle = t.c;
+        ctx.beginPath(); ctx.arc(lipX, lipY, 7, 0, Math.PI * 2); ctx.fill();
+        
+        if(n - lastPour > iv){
+            ps.push({x: lipX, y: lipY, startY: lipY, vx: b.a * 1.3, vy: t.n === "OIL" ? 0.15 : 0.25, life: 180, landed: false, p: false, inL: false});
+            lastPour = n;
         }
-    }else saturation=Math.max(0,saturation-0.05);
+    } else {
+        saturation = Math.max(0, saturation - 0.05 * dt);
+    }
 
-    // PHYSICS & SPILL
-    for(let i=ps.length-1;i>=0;i--){
-        let p=ps[i];
+    // DROP PHYSICS + SHINE
+    for(let i = ps.length - 1; i >= 0; i--){
+        let p = ps[i];
         if(!p.landed){
-            p.vy+= t.n==="OIL"?0.15:0.25; p.x+=p.vx; p.y+=p.vy; p.r = Math.min(14, 6 + (Math.abs(p.y - p.startY) / 50) * 8);
-            for(let j=0; j<bps.length; j++){
+            let gravity = (t.n === "OIL" ? 0.15 : 0.25);
+            p.vy += gravity * dt; 
+            p.x += p.vx * dt; 
+            p.y += p.vy * dt;
+            p.r = Math.min(14, 6 + (Math.abs(p.y - p.startY) / 50) * 8);
+
+            for(let j = 0; j < bps.length; j++){
                 let c = bps[j];
-                let sY=c.y+c.h-((c.fill/c.cap)*c.h);
-                if(p.x>c.x-c.w/2-30&&p.x<c.x+c.w/2+30&&p.y>sY-15&&p.y<c.y+c.h+15){
-                    if(c.fill<c.cap){ if(!p.inL){c.fill+=1.5;p.inL=true} ps.splice(i,1); break; }
-                    else if(c.forgive<8){c.forgive++;ps.splice(i,1); break; }
+                let sY = c.y + c.h - ((c.fill / c.cap) * c.h);
+                if(p.x > c.x - c.w/2 - 30 && p.x < c.x + c.w/2 + 30 && p.y > sY - 15 && p.y < c.y + c.h + 15){
+                    if(c.fill < c.cap){ 
+                        if(!p.inL){ c.fill += 1.5 * dt; p.inL = true; } 
+                        ps.splice(i, 1); break; 
+                    } else if(c.forgive < 8){
+                        c.forgive++; ps.splice(i, 1); break; 
+                    }
                 }
             }
-            if(p.y>canvas.height-165 && !p.p){ p.landed=true;p.y=canvas.height-163;globalWaste+=1;p.p=true; }
+            if(p.y > beltY && !p.p){ 
+                p.landed = true; p.y = beltY + 2; globalWaste += 1; p.p = true; 
+            }
         }
-        ctx.fillStyle = t.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r || 5, 0, Math.PI * 2); ctx.fill();
+        
+        // The Drop
+        ctx.fillStyle = t.c; 
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r || 5, 0, Math.PI * 2); ctx.fill();
+        
+        // The Shine
         ctx.fillStyle = "rgba(255,255,255,0.45)"; 
-        ctx.beginPath(); ctx.ellipse(p.x - (p.r || 5)/3, p.y - (p.r || 5)/3, (p.r || 5)/2, (p.r || 5)/4, Math.PI/4, 0, Math.PI*2); ctx.fill();
-        if(p.landed){ p.life--; if(p.life <= 0) ps.splice(i, 1); }
+        ctx.beginPath(); 
+        ctx.ellipse(p.x - (p.r || 5)/3, p.y - (p.r || 5)/3, (p.r || 5)/2, (p.r || 5)/4, Math.PI/4, 0, Math.PI*2); 
+        ctx.fill();
+
+        if(p.landed){ 
+            p.life -= dt; 
+            if(p.life <= 0) ps.splice(i, 1); 
+        }
     }
     document.getElementById('w').innerText = Math.floor(globalWaste);
-    ctx.restore(); requestAnimationFrame(draw);
+    ctx.restore(); 
+    requestAnimationFrame(draw);
 }
+
 
 // CONTROLS
 canvas.onmousedown = canvas.ontouchstart = e => { e.preventDefault(); if(active) { isDragging = true; targetA = -0.8; } };
 window.onmouseup = window.ontouchend = () => { isDragging = false; targetA = 0; };
 
 function syncCanvasNoStretch() {
-    const c = document.getElementById('c'); // Your canvas
+    const c = document.getElementById('c');
     const container = document.getElementById('game-container');
     const rect = container.getBoundingClientRect();
 
-    // 1. Force internal resolution to match physical screen space
-    // This stops the stretching (Ovals become Circles)
-    c.width = rect.width;
-    c.height = rect.height;
+    // 1. Set display size
+    c.style.width = rect.width + 'px';
+    c.style.height = rect.height + 'px';
 
-    // 2. Fix the Blur for High-DPI (Retina) phones
-    const dpr = window.devicePixelRatio || 1;
-    if (dpr > 1) {
-        c.width = rect.width * dpr;
-        c.height = rect.height * dpr;
-        c.style.width = rect.width + 'px';
-        c.style.height = rect.height + 'px';
-        
-        // Scale the context so your original coordinates (like 180, 640) still work
-        c.getContext('2d').scale(dpr, dpr);
-    }
+    // 2. FORCE internal logic to a fixed 360x640 scale
+    // This stops the sensitivity and stretching!
+    c.width = 360;
+    c.height = 640;
+    
+    // 3. Ensure the CSS doesn't stretch the image (Keep Aspect Ratio)
+    c.style.objectFit = "contain";
+    c.style.backgroundColor = "#1a0a0a"; // Match your theme
 }
+
 
 // Execute before initGame()
 syncCanvasNoStretch();
