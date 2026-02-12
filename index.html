@@ -104,13 +104,14 @@
 
   @media (max-width: 700px) {
     /* 1. FLIP TO VERTICAL STACK */
-    #game-container {
+        #game-container {
         flex-direction: column !important;
         gap: 0px !important;
-        justify-content: flex-start !important;
-        height: 100vh;
+        justify-content: center !important; /* ONLY CHANGE: flex-start -> center */
+        height: 100dvh; /* Uses the dynamic viewport to stay centered between bars */
         width: 100vw;
     }
+
 
     /* 2. MAKE SQUARE HERO: Scale to full width */
     .game-anchor {
@@ -139,7 +140,14 @@
         justify-content: space-between;
     }
     
-    .hud-module div { display: block !important; }
+    .hud-module div { 
+        display: flex !important; 
+		align-items: center !important; /* This forces the label and value onto the exact same horizontal center-line */
+		justify-content: space-between; 
+		width: 
+
+	100%;
+	    }
 
     /* 4. OVERLAYS: Adjust to the new full-width square */
     #level-start, #game-over, #lr {
