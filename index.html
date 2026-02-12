@@ -4,113 +4,172 @@
     <title>Spill</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://sdk.crazygames.com"></script>
-    <style>
-        body { margin: 0; background: #0f171e; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: monospace; touch-action: none; }
-       #game-container {
-	    position: relative;
-	    margin: 0 auto; /* Centers the game on desktop */
-	    overflow: hidden;
-	    background: #000; /* Professional backdrop */
-	    
-	    /* DESKTOP SETTINGS (Default) */
-	    width: 360px;
-	    height: 640px;
-	    border: 4px solid #d1d1d6;
-	    border-radius: 20px;
-	}
+<style>
+    /* 1. MASTER LAYOUT */
+    body { margin: 0; background: #0f171e; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; overflow: hidden; font-family: monospace; }
+   /* 1. The Container - Ensure it doesn't grow */
+#game-container { 
+    display: flex; 
+    flex-direction: row; 
+    align-items: center; /* This centers the 360px box vertically */
+    justify-content: center; 
+    gap: 20px; 
+    max-height: 100vh; /* Prevent the whole page from growing */
+    background: #ffffff !important;
+}
 
-	/* MOBILE SETTINGS (Overrides for screens under 600px) */
-	@media (max-width: 600px) {
-	    #game-container {
-		width: 100vw;   /* Full Viewport Width */
-		height: 100vh;  /* Full Viewport Height */
-		border: none;   /* Remove the "frame" look on mobile */
-		border-radius: 0;
-		top: 0;
-		left: 0;
-	    }
-	    
-	    /* Ensure the canvas inside fills the now-expanded container */
-	    #game-container canvas {
-		width: 100% !important;
-		height: 100% !important;
-	    }
-	}
+/* 2. THE ANCHOR - This MUST be the only thing defining the height */
+.game-anchor { 
+    position: relative; 
+    width: 360px !important; 
+    height: 360px !important; 
+    flex-shrink: 0; 
+    overflow: hidden; 
+    border: 4px solid #d1d1d6; 
+    border-radius: 12px;
+    z-index: 1; /* Keeps it above any ghost layers */
+}
 
-        #hud{position:absolute;top:10px;left:10px;right:10px;border:1px solid #4a4e50;padding:10px;background:rgba(0,0,0,0.9);color:#faedcd;pointer-events:none;line-height:1.4;z-index:1000;font-size:10px;box-shadow:0 0 10px #000}
-        #w{color:#ff4757;font-weight:bold}
-        .flash-red { color: #ff0000 !important; text-shadow: 0 0 8px #ff0000; animation: blink 0.4s infinite; }
-        
-   #pour-hint {
-	    position: absolute;
-	    top: 22%;
-	    left: 50%;
-	    transform: translateX(-50%);
-	    font-family: sans-serif;
-	    font-size: 16px;
-	    letter-spacing: 2px;
-	    color: white;
-	    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
-	    z-index: 10000;
-	    pointer-events: none;
-	    display: none;
-	    opacity: 0;
-	    animation: breathe 2s infinite ease-in-out;
-	}
-
-	@keyframes breathe {
-	    0%, 100% { opacity: 0.3; transform: translateX(-50%) scale(1); }
-	    50% { opacity: 0.8; transform: translateX(-50%) scale(1.05); }
-	}
+/* 3. THE CANVAS - Absolute keeps it from pushing the HUD */
+#c { 
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 360px !important; 
+    height: 640px !important; /* The 640px buffer that provides the speed */
+    background: #000;
+    display: block;
+}
 
 
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-        canvas{display:block;background:rgba(0,0,0,0.1)}
-        #pf,#missed{position:absolute;width:100%;text-align:center;top:30%;font-size:24px;font-weight:bold;display:none;text-shadow:0 0 10px rgba(0,0,0,0.5);z-index:150}
-        #pf{color:#0f0;text-shadow:0 0 10px #0f0}
-        #missed{color:#ff4757;text-shadow:0 0 10px #ff4757;font-size:80px;top:40%}
-        #level-start, #game-over{position:absolute;top:0;left:0;width:100%;height:100%;z-index:300;display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#faedcd}
-        #ls-content, #go-content{background:rgba(0,0,0,0.9);padding:40px 0;border-top:4px solid #d4a373;border-bottom:4px solid #d4a373;width:100%;box-shadow:0 0 30px #000}
-        #lr{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:280px;background:rgba(0,0,0,0.95);border:2px solid #b8a68a;color:#faedcd;padding:20px;display:none;z-index:200;text-align:center;box-shadow:0 0 30px #000}
-        #stars{color:#ffd700;font-size:32px;margin:10px 0;letter-spacing:5px}
-        #vibe-label{font-size:20px;font-weight:bold;margin-bottom:15px;display:block}
-        .stat-row{display:flex;justify-content:space-between;margin:8px 0;font-size:14px;border-bottom:1px solid #3d2b1f}
-        button{background:#d4a373;border:none;padding:15px 25px;color:#1a0a0a;font-weight:bold;cursor:pointer;margin-top:15px;width:70%;font-size:16px}
-        #dev-btn-style { background:#ff4757; padding:5px; width:auto; font-size:10px; margin-top:5px; pointer-events:auto; display:inline-block; }
-        #copyright { position: absolute; bottom: 10px; width: 100%; text-align: center; font-size: 8px; color: rgba(255,255,255,0.5); pointer-events: none; z-index: 999; }
-    </style>
+
+    /* 2. HUD SIDEBARS */
+    .hud-module {
+        width: 220px !important;
+        background: rgba(15, 23, 30, 0.95);
+        border: 1px solid #4a4e50;
+        padding: 15px;
+        color: #faedcd;
+        font-size: 13px;
+        border-radius: 8px;
+        display: table !important; 
+    }
+    .hud-module div { display: table-row; white-space: nowrap !important; }
+    #w { color: #ff4757; font-weight: 900; display: inline-block !important; width: auto !important; }
+
+    /* 3. OVERLAYS (Fix: Removed !important from display/justify to allow JS control) */
+    #level-start, #game-over, #lr {
+        position: absolute !important;
+        top: -5px; left: -5px; width: 372px; height: 372px; z-index: 10000 !important;
+        display: none; flex-direction: column; align-items: center;
+        background: radial-gradient(circle at center, #1e272e 0%, #0a0c0f 100%);
+        border: 1px solid #ffffff; border-radius: 12px; box-sizing: border-box;
+    }
+    #level-start, #game-over { justify-content: center; }
+    #lr { justify-content: flex-start; padding-top: 100px; }
+
+    /* 4. UNIFIED TYPOGRAPHY (Fix: Removed !important from display) */
+    #ls-title, #ls-theme, #go-content h1, #lr-title, #vibe-label, #stars {
+        width: 100% !important; text-align: center !important;
+        margin: 5px 0 !important; display: block;
+        font-family: 'Courier New', monospace;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+    }
+
+    #ls-title, #go-content h1, #lr-title { color: #ffffff; text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); font-size: 24px; }
+    #ls-theme, #vibe-label { color: #ffdd59; font-size: 20px; font-weight: bold; text-shadow: 0 0 8px rgba(255, 221, 89, 0.4); }
+    #stars { color: #ffd700; font-size: 32px; letter-spacing: 5px; }
+    .stat-row { display: flex; justify-content: space-between; width: 240px; margin: 4px auto !important; font-size: 12px; color: #d2dae2; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+
+    /* 5. THE WHITE COMMAND BUTTON */
+    button {
+        background: #ffffff !important; color: #000000 !important;
+        border: none; border-radius: 2px; padding: 16px 0; width: 210px !important;
+        font-weight: 900; text-transform: uppercase; letter-spacing: 2px;
+        cursor: pointer; margin: 25px auto 0 auto !important; display: block;
+        transition: 0.2s all;
+    }
+    button:hover { transform: scale(1.04); box-shadow: 0 0 25px rgba(52, 231, 228, 0.6) !important; }
+
+    /* 6. HINTS & FEEDBACK */
+    #pour-hint { position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%); font-family: sans-serif; font-size: 18px; font-weight: 900; color: #fff; z-index: 10001; display: none; animation: breathe 2s infinite ease-in-out; }
+    @keyframes breathe { 0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.9); } 50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.1); } }
+    #pf { color: #0f0; top: 45%; font-size: 24px; position: absolute; width: 100%; text-align: center; font-weight: bold; text-shadow: 0 0 10px #0f0; animation: glowPulse 1s infinite alternate; display: none; }
+    @keyframes glowPulse { from { text-shadow: 0 0 5px #0f0; transform: scale(1); } to { text-shadow: 0 0 25px #0f0; transform: scale(1.1); } }
+    #missed { position: absolute; width: 100%; text-align: center; color: #ff4757; top: 35%; font-size: 80px; display: none; }
+    #copyright { position: absolute; bottom: 10px; width: 100%; text-align: center; font-size: 8px; color: #444; }
+
+    @media (max-width: 700px) {
+        #game-container { flex-direction: column; gap: 10px; }
+        .hud-module { width: 330px; }
+    }
+</style>
+
 </head>
 <body>
 <div id="game-container">
-    <div id="hud">
-        <div style="float:left">
-            LEVEL: <span id="lvl-info">1 - WARMUP</span><br>
-            PROGRESS: <span id="mug-progress">0 / 0</span><br>
-            SPILL: <span id="w">0</span>ml
-            <div id="dev-container"></div>
-        </div>
-        <div style="float:right; text-align:right">
-            SCORE: <span id="curr-score" style="color:#0f0">0</span><br>
-            LOCAL BEST: <span id="best-score">0</span><br>
-            <span id="world-label" style="display:none">WORLD BEST: <span id="world-score">0</span> (<span id="world-name" style="color:#ffd700">...</span>)</span>
-        </div>
-        <div style="clear:both"></div>
+    <!-- LEFT HUD MODULE -->
+    <div id="hud-left" class="hud-module">
+        LEVEL: <span id="lvl-info">...</span><br>
+        PROGRESS: <span id="mug-progress">0/0</span><br>
+        SPILL: <span id="w">0</span>ml
     </div>
-    <div id="pf">PERFECT!</div><div id="missed">✘</div>
-    <div id="pour-hint" style="display:none;">HOLD TO POUR</div>
-    <div id="level-start"><div id="ls-content"><h1 id="ls-title">LEVEL 1</h1><h2 id="ls-theme">...</h2><button onclick="startLevel()">START</button></div></div>
-    <div id="game-over"><div id="go-content"><h1>CONGRATULATIONS!</h1><p>You mastered every station.</p><h2>TOTAL SCORE: <span id="final-score" style="color:#0f0">0</span></h2><button onclick="location.reload()">PLAY AGAIN</button></div></div>
-    <div id="lr"><h2 id="lr-title">LEVEL REPORT</h2><div id="stars">☆☆☆☆☆</div><span id="vibe-label">...</span><div id="stats-area"><div class="stat-row"><span>VOLUME FILLED:</span><span id="lr-acc">0%</span></div><div class="stat-row"><span>SPILL:</span><span id="lr-waste">0ml</span></div></div><button id="lr-btn" onclick="handleLR()">CONTINUE</button></div>
-    <canvas id="c"></canvas>
+
+    <!-- THE ANCHOR: Now with Hard-Lock on dimensions and Overflow Hidden -->
+    <div class="game-anchor" style="position: relative; width: 360px; height: 360px; flex-shrink: 0; overflow: hidden; border: 4px solid #d1d1d6; border-radius: 12px; background: #000;">
+        
+        <!-- THE CANVAS: Position Absolute so it doesn't push the layout down -->
+        <canvas id="c" style="position: absolute; top: 0; left: 0; width: 360px; height: 640px; display: block;"></canvas>
+
+        <!-- OVERLAYS: Locked to the 360px Square -->
+        <div id="level-start">
+            <div id="ls-content">
+                <h1 id="ls-title">LEVEL 1</h1>
+                <h2 id="ls-theme">...</h2>
+                <button onclick="startLevel()">START</button>
+            </div>
+        </div>
+
+        <div id="game-over">
+            <div id="go-content">
+                <h1>CONGRATULATIONS!</h1>
+                <p>You mastered every level.</p>
+                <h2>TOTAL SCORE: <span id="final-score" style="color:#0f0">0</span></h2>
+                <button onclick="location.reload()">PLAY AGAIN</button>
+            </div>
+        </div>
+
+        <div id="lr">
+            <h2 id="lr-title">LEVEL REPORT</h2>
+            <div id="stars">☆☆☆☆☆</div>
+            <span id="vibe-label">...</span>
+            <div id="stats-area">
+                <div class="stat-row"><span>VOLUME FILLED:</span><span id="lr-acc">0%</span></div>
+                <div class="stat-row"><span>SPILL:</span><span id="lr-waste">0ml</span></div>
+            </div>
+            <button id="lr-btn" onclick="handleLR()">CONTINUE</button>
+        </div>
+
+        <!-- FEEDBACK ICONS: Centered over Teapot -->
+        <div id="pf">PERFECT!</div>
+        <div id="missed">✘</div>
+        <div id="pour-hint" style="display:none;">HOLD TO POUR</div>
+    </div>
+
+    <!-- RIGHT HUD MODULE -->
+    <div id="hud-right" class="hud-module">
+        SCORE: <span id="curr-score" style="color:#0f0">0</span><br>
+        LOCAL BEST: <span id="best-score">0</span>
+    </div>
+
     <div id="copyright">© <span id="year"></span> Spill Engine. All Rights Reserved.</div>
 </div>
-
 <script>
 let ADMIN = 0; 
 
 let hasEverShownHint = false; 
 
-const sdk = window.CrazyGames ? window.CrazyGames.SDK : null;
 const LevelConfigs = [
     { n: "WARMUP", c: "#ff4500", delay: 0, mugs: [{w:200, h:40, s:0.7}], gc: "#1a0a05"},
     { n: "OIL", c: "#1a1a1a", delay: 350, mugs: [{w:60, h:95, s:0.5}, {w:70, h:100, s:0.4}, {w:70, h:90, s:0.6}, {w:130, h:70, s:0.5}, {w:60, h:100, s:0.6}], gc: "#ffffff"},
@@ -126,8 +185,10 @@ const LevelConfigs = [
 ];
 
 let canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
-canvas.width=360;canvas.height=640;
-let b={x:canvas.width/2+20,y:260,w:70,h:80,a:0},ps=[],globalWaste=0,active=false,bps=[],spawnTimer=10,mugCount=0,lastPour=0,isDragging=false,saturation=0,targetA=0,currentLevel=1,levelMugsProcessed=0,levelTotalFill=0,levelTotalCap=0,shake=0;
+canvas.width=360;canvas.height=360;
+// 1. Move the Teapot (b.y) higher up in the square
+let b = { x: 180, y: 100, w: 70, h: 80, a: 0 }; 
+ps=[],globalWaste=0,active=false,bps=[],spawnTimer=10,mugCount=0,lastPour=0,isDragging=false,saturation=0,targetA=0,currentLevel=1,levelMugsProcessed=0,levelTotalFill=0,levelTotalCap=0,shake=0;
 let score=0, bestScore=parseInt(localStorage.getItem('spill_total_score'))||0;
 
 if(ADMIN===1){ document.getElementById('dev-container').innerHTML = `<button id="dev-btn-style" onclick="skipLevel()">SKIP LEVEL</button>`; }
@@ -159,17 +220,29 @@ async function updateLeaderboard() {
     } catch(e){}
 }
 
-function updateTheme(){
-    const t=LevelConfigs[currentLevel-1];
-    document.getElementById('ls-title').innerText=`Level ${currentLevel}`;
-    document.getElementById('ls-theme').innerText=t.n;
-    document.getElementById('lvl-info').innerText=currentLevel + " - " + t.n;
-    document.getElementById('mug-progress').innerText = `0 / ${t.mugs.length}`;
-    document.getElementById('game-container').style.backgroundColor = t.gc;
-    document.getElementById('level-start').style.backgroundColor = t.gc;
-    document.getElementById('level-start').style.display='flex';
-    active=false;
+function updateTheme() {
+    const t = LevelConfigs[currentLevel - 1];
+    
+    // Fill the Start Menu Text
+    const title = document.getElementById('ls-title');
+    const theme = document.getElementById('ls-theme');
+    if (title) title.innerText = `Level ${currentLevel}`;
+    if (theme) theme.innerText = t.n;
+
+    // Fill the Sidebar HUD
+    const lvlInfo = document.getElementById('lvl-info');
+    if (lvlInfo) lvlInfo.innerText = `${currentLevel} - ${t.n}`;
+    
+    // Set colors
+    const container = document.getElementById('game-container');
+    if (container) container.style.backgroundColor = t.gc;
+    
+    const startMenu = document.getElementById('level-start');
+    if (startMenu) startMenu.style.display = 'flex';
+    
+    active = false;
 }
+
 
 function startLevel(){
 
@@ -212,55 +285,53 @@ function startLevel(){
 		            hint.style.display = 'none'; 
 		        }, 1000);
 		    }, 2000); 
-		}, 2000);
+		}, 1000);
 	    }
 	} 
 	}
 
-function createBP(){
-    const lvl=LevelConfigs[currentLevel-1];
-    if(mugCount>=lvl.mugs.length)return;
-    const dna=lvl.mugs[mugCount];
+function createBP() {
+    const lvl = LevelConfigs[currentLevel-1];
+    if(mugCount >= lvl.mugs.length) return;
+    const dna = lvl.mugs[mugCount];
     const autoCap = Math.floor((dna.w * dna.h) * 0.015);
-    bps.push({x:-70,y:canvas.height-170-dna.h,w:dna.w,h:dna.h,speed:dna.s,cap:autoCap,fill:0,proc:false,perf:false,forgive:0});
-    spawnTimer=lvl.delay;mugCount++;
+    
+    // FIXED: beltY is 320, so mug bottom must be 320
+    let groundY = 320 - dna.h; 
+    
+    bps.push({
+        x: -70, 
+        y: groundY, 
+        w: dna.w, 
+        h: dna.h, 
+        speed: dna.s, 
+        cap: autoCap, 
+        fill: 0, 
+        proc: false, 
+        perf: false, 
+        forgive: 0
+    });
+    spawnTimer = lvl.delay; 
+    mugCount++;
 }
 
-function handleLR(){
-    const adj=document.getElementById('vibe-label').innerText;
-    let pts = (adj === "Flawless!" ? 300 : (adj === "Groovy" ? 200 : (adj === "Good" ? 100 : 0)));
-    
-    // RESTORED: Balanced Ads Logic
-    const isWin = pts > 0;
-    const isFail = !isWin && adj !== "";
-    
-    const finalize = () => {
-        if(isWin){
-            score += pts;
-            document.getElementById('curr-score').innerText = score;
-            
-            // FIXED: Display Sync for Local Best
-            let storedBest = parseInt(localStorage.getItem('spill_total_score')) || 0;
-            if(score > storedBest){
-                localStorage.setItem('spill_total_score', score);
-                document.getElementById('best-score').innerText = score; // Update HUD
-                if(sdk) sdk.user.isUserLoggedIn().then(l => { if(l) sdk.user.syncScore(score); });
-            }
 
-            if(currentLevel >= LevelConfigs.length){
-                document.getElementById('final-score').innerText = score;
-                document.getElementById('game-over').style.display = 'flex';
-            } else { currentLevel++; resetLevel(currentLevel); }
-        } else { resetLevel(currentLevel); }
-        document.getElementById('lr').style.display='none';
-    };
+function handleLR() {
+    const adj = document.getElementById('vibe-label').innerText;
+    // If it's not a retry-worthy message, we move forward
+    const isFail = (adj === "FAILED" || adj === "TOO MUCH SPILL!");
 
-    // RESTORED: CrazyGames Ad Call
-    if(sdk){ 
-        sdk.ad.requestAd('midroll', { adFinished: finalize, adError: finalize }); 
-    } else { 
-        finalize(); 
+    if (!isFail) {
+        if (currentLevel >= LevelConfigs.length) {
+            document.getElementById('game-over').style.display = 'flex';
+        } else {
+            currentLevel++; // MOVE TO LEVEL 2
+            resetLevel(currentLevel); 
+        }
+    } else {
+        resetLevel(currentLevel); // RETRY LEVEL 1
     }
+    document.getElementById('lr').style.display = 'none';
 }
 
 function skipLevel(){
@@ -283,26 +354,46 @@ function showLR(eff,acc,waste,failed=false){
 }
 
 function displayLR(acc, waste, failed, customMsg = ""){
-    document.getElementById('lr').style.display='block';
-    let dAcc=acc>=98?100:acc; document.getElementById('lr-acc').innerText=dAcc+"%";
-    let w=Math.floor(waste); document.getElementById('lr-waste').innerText=w+"ml";
-    let s="★☆☆☆☆",adj="";
-    
-    document.getElementById('lr-title').style.display = 'block';
-    document.getElementById('stats-area').style.display = 'block';
-    document.getElementById('stars').style.display = 'block';
+    const lr = document.getElementById('lr');
+    lr.style.display = 'flex'; 
 
-    if(customMsg === "TOO MUCH SPILL!") {
-        adj = customMsg; document.getElementById('lr-title').style.display = 'none';
-        document.getElementById('stats-area').style.display = 'none'; document.getElementById('stars').style.display = 'none';
-    } else if(!failed && w <= 20){
-        if(w===0){s="★★★★★";adj="Flawless!"; if(sdk) sdk.game.happyTime();}
-        else if(w<=10){s="★★★★☆";adj="Groovy"}
-        else if(w<=20){s="★★★☆☆";adj="Good"}
-    } else { adj=customMsg || "FAILED"; document.getElementById('stars').style.display = 'none'; }
-    
-    document.getElementById('stars').innerText=s; document.getElementById('vibe-label').innerText=adj;
-    document.getElementById('lr-btn').innerText=(adj==="FAILED" || adj==="TOO MUCH SPILL!") ?"RETRY":"CONTINUE";
+    const starsEl = document.getElementById('stars');
+    const vibeEl = document.getElementById('vibe-label');
+    const statsArea = document.getElementById('stats-area');
+    const btn = document.getElementById('lr-btn');
+    const title = document.getElementById('lr-title');
+
+    let w = Math.floor(waste);
+    document.getElementById('lr-acc').innerText = (acc >= 98 ? 100 : acc) + "%";
+    document.getElementById('lr-waste').innerText = w + "ml";
+
+    // THE FIX: Explicitly check for the 20ml fail condition first
+    if (failed || w >= 20) {
+        // KILL the success UI
+        title.style.display = 'none';      
+        starsEl.style.display = 'none';    
+        statsArea.style.display = 'none';  
+        
+        // SHOW the fail UI
+        vibeEl.innerText = (w >= 20) ? "TOO MUCH SPILL!" : "FAILED";
+        vibeEl.style.display = 'block';
+        btn.innerText = "RETRY";
+    } 
+    else {
+        // SHOW the success UI
+        title.style.display = 'block';
+        starsEl.style.display = 'block';
+        statsArea.style.display = 'block';
+        btn.innerText = "CONTINUE";
+
+        // Determine Stars (Only 3, 4, or 5)
+        let s = "★★★☆☆", adj = "Good";
+        if (w === 0) { s = "★★★★★"; adj = "Flawless!"; }
+        else if (w <= 10) { s = "★★★★☆"; adj = "Groovy"; }
+
+        starsEl.innerText = s;
+        vibeEl.innerText = adj;
+    }
 }
 
 function drawCyl(x,y,w,h,fV,cap,col,isP,angle=0){
@@ -346,89 +437,100 @@ let lastTime = performance.now();
 
 function draw() {
     let currentTime = performance.now();
-    let dt = (currentTime - lastTime) / 16.66; 
+    let dt = (currentTime - lastTime) / 16.0; 
     if (dt > 2) dt = 1;
     lastTime = currentTime;
 
+    // 1. Fixed Clear: Clear BEFORE save to avoid stack ghosting
+    ctx.clearRect(0, 0, 360, 360);
+    
     const t = LevelConfigs[currentLevel-1];
-    ctx.save();
+    ctx.save(); 
 
     if(shake > 0) {
         ctx.translate(Math.random()*shake - shake/2, Math.random()*shake - shake/2); 
         shake *= 0.9;
     }
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     b.a += (targetA - b.a) * 0.15 * dt;
-    
-    // CONVEYOR BELT
+    let beltY = 320; 
+
+    // Belt
     ctx.lineWidth = 14;
-    let beltY = canvas.height - 165;
     let beltG = ctx.createLinearGradient(0, beltY - 7, 0, beltY + 7);
     beltG.addColorStop(0, "#1a1c1d"); beltG.addColorStop(0.5, "#4a4e50"); beltG.addColorStop(1, "#1a1c1d");
     ctx.strokeStyle = beltG;
-    ctx.beginPath(); ctx.moveTo(0, beltY); ctx.lineTo(canvas.width, beltY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, beltY); ctx.lineTo(360, beltY); ctx.stroke();
     
-    document.getElementById('mug-progress').innerText = levelMugsProcessed + " / " + t.mugs.length;
-
-    // FAIL CHECK
-    if(active && globalWaste > 20.9){ 
-        active = false; isDragging = false; targetA = 0; shake = 25;
-        document.getElementById('missed').style.display = 'block';
-        setTimeout(() => displayLR(Math.floor((levelTotalFill/levelTotalCap)*100), globalWaste, true, "TOO MUCH SPILL!"), 800);
-    }
-
     if(active){
         spawnTimer -= dt; 
         if(spawnTimer <= 0) createBP();
     }
     
-    // MUGS
+    if(active && globalWaste > 19.9){ 
+        active = false; isDragging = false; targetA = 0; shake = 25;
+        document.getElementById('missed').style.display = 'block';
+        setTimeout(() => {
+            const acc = levelTotalCap > 0 ? Math.floor((levelTotalFill/levelTotalCap)*100) : 0;
+            displayLR(acc, globalWaste, true, "TOO MUCH SPILL!");
+        }, 800);
+    }
+    
+    // Mugs
     bps.forEach(c => {
         if(active) c.x += c.speed * dt;
         drawCyl(c.x, c.y, c.w, c.h, c.fill, c.cap, t.c, false);
-        
+
         if(c.fill >= c.cap && !c.perf){
             c.perf = true;
             levelMugsProcessed++; 
+            // Update HUD only on change
+            document.getElementById('mug-progress').innerText = levelMugsProcessed + " / " + t.mugs.length;
+            
             if(currentLevel === 1) {
                 document.getElementById('pf').style.display = 'block';
                 setTimeout(() => document.getElementById('pf').style.display = 'none', 1000);
             }
         }
         
-        if(c.x > canvas.width + 10 && c.fill < c.cap && !c.proc){
-            active = false; shake = 25; document.getElementById('missed').style.display = 'block';
-            setTimeout(() => displayLR(Math.floor((c.fill/c.cap)*100), globalWaste, true), 800);
-            c.proc = true;
-        }
+     // 2. MISS CHECK (Mug's back edge passed the teapot's right edge while empty)
+if((c.x - c.w/2) > 215 && c.fill < c.cap && !c.proc){
+    active = false; 
+    shake = 25; 
+    document.getElementById('missed').style.display = 'block';
+    setTimeout(() => displayLR(Math.floor((c.fill/c.cap)*100), globalWaste, true), 500);
+    c.proc = true;
+}
 
-        if(c.x > canvas.width + 10 && !c.proc){
-            c.proc = true;
-            levelTotalFill += Math.min(c.cap, c.fill);
-            levelTotalCap += c.cap;
-            if(levelMugsProcessed === t.mugs.length) showLR(0, Math.floor((levelTotalFill/levelTotalCap)*100), globalWaste);
-        }
+
+        // 3. SUCCESS CHECK (Mug has passed the pouring zone)
+// 3. SUCCESS CHECK (Mug's back edge has passed the teapot's right edge)
+if((c.x - c.w/2) > 215 && !c.proc){
+    c.proc = true;
+    levelTotalFill += Math.min(c.cap, c.fill);
+    levelTotalCap += c.cap;
+    
+    if(levelMugsProcessed === t.mugs.length) {
+        // Wait for drops in flight to land
+        const checkAir = setInterval(() => {
+            if (ps.length === 0) { 
+                clearInterval(checkAir);
+                showLR(0, Math.floor((levelTotalFill/levelTotalCap)*100), globalWaste);
+            }
+        }, 50);
+    }
+}
+
+
     });
 
-    // CARAFE / TEAPOT + HANDLE
+    // Teapot
     ctx.save();
-    ctx.translate(b.x, b.y);
-    ctx.rotate(b.a);
-    
-    // The Handle
-    let hG = ctx.createLinearGradient(b.w/2, -20, b.w/2 + 15, 20);
-    hG.addColorStop(0, "#4a4e50"); hG.addColorStop(0.5, "#71797E"); hG.addColorStop(1, "#4a4e50");
-    ctx.strokeStyle = hG;
-    ctx.lineWidth = 6;
-    ctx.beginPath(); 
-    ctx.arc(b.w/2, 0, 15, -Math.PI/2, Math.PI/2); 
-    ctx.stroke();
-    
+    ctx.translate(b.x, b.y); ctx.rotate(b.a);
     drawCyl(0, -b.h/2 + 10, b.w, b.h - 20, 68, 100, t.c, true, b.a);
     ctx.restore();
 
-    // POURING
+    // Pouring Logic
     if(isDragging && b.a < -0.15 && active){
         let n = Date.now(); 
         saturation = Math.min(1, saturation + 0.04 * dt);
@@ -448,15 +550,14 @@ function draw() {
         saturation = Math.max(0, saturation - 0.05 * dt);
     }
 
-    // DROP PHYSICS + SHINE
+    // Drop Physics
+    let wasteChanged = false;
     for(let i = ps.length - 1; i >= 0; i--){
         let p = ps[i];
         if(!p.landed){
             let gravity = (t.n === "OIL" ? 0.15 : 0.25);
-            p.vy += gravity * dt; 
-            p.x += p.vx * dt; 
-            p.y += p.vy * dt;
-            p.r = Math.min(14, 6 + (Math.abs(p.y - p.startY) / 50) * 8);
+            p.vy += gravity * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+            p.r = Math.min(14, 6 + (Math.abs(p.y - p.startY) / 25) * 8);
 
             for(let j = 0; j < bps.length; j++){
                 let c = bps[j];
@@ -472,59 +573,74 @@ function draw() {
             }
             if(p.y > beltY && !p.p){ 
                 p.landed = true; p.y = beltY + 2; globalWaste += 1; p.p = true; 
+                wasteChanged = true; // Flag for UI update
             }
         }
         
-        // The Drop
         ctx.fillStyle = t.c; 
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r || 5, 0, Math.PI * 2); ctx.fill();
-        
-        // The Shine
         ctx.fillStyle = "rgba(255,255,255,0.45)"; 
-        ctx.beginPath(); 
-        ctx.ellipse(p.x - (p.r || 5)/3, p.y - (p.r || 5)/3, (p.r || 5)/2, (p.r || 5)/4, Math.PI/4, 0, Math.PI*2); 
+        ctx.beginPath(); ctx.ellipse(p.x - (p.r || 5)/3, p.y - (p.r || 5)/3, (p.r || 5)/2, (p.r || 5)/4, Math.PI/4, 0, Math.PI*2); 
         ctx.fill();
 
-        if(p.landed){ 
-            p.life -= dt; 
-            if(p.life <= 0) ps.splice(i, 1); 
-        }
+        if(p.landed && (p.life -= dt) <= 0) ps.splice(i, 1);
     }
-    document.getElementById('w').innerText = Math.floor(globalWaste);
+
+    // Only update spill HUD if a drop actually hit the floor
+    if(wasteChanged) document.getElementById('w').innerText = Math.floor(globalWaste);
+
     ctx.restore(); 
     requestAnimationFrame(draw);
 }
 
-
 // CONTROLS
-canvas.onmousedown = canvas.ontouchstart = e => { e.preventDefault(); if(active) { isDragging = true; targetA = -0.8; } };
-window.onmouseup = window.ontouchend = () => { isDragging = false; targetA = 0; };
+// --- UNIFIED INPUT ---
+const handleStart = (e) => {
+    if (e.cancelable) e.preventDefault();
+    if (active) { isDragging = true; targetA = -0.8; }
+};
+const handleEnd = () => { isDragging = false; targetA = 0; };
 
 function syncCanvasNoStretch() {
     const c = document.getElementById('c');
-    const container = document.getElementById('game-container');
-    const rect = container.getBoundingClientRect();
-
-    // 1. Set display size
-    c.style.width = rect.width + 'px';
-    c.style.height = rect.height + 'px';
-
-    // 2. FORCE internal logic to a fixed 360x640 scale
-    // This stops the sensitivity and stretching!
+    // We lock the internal logic to a fixed 360x360
     c.width = 360;
     c.height = 640;
-    
-    // 3. Ensure the CSS doesn't stretch the image (Keep Aspect Ratio)
-    c.style.objectFit = "contain";
-    c.style.backgroundColor = "#1a0a0a"; // Match your theme
 }
 
+function finalBoot() {
+    // 1. Run the sync logic first
+    syncCanvasNoStretch();
 
-// Execute before initGame()
-syncCanvasNoStretch();
-initGame();
+    const c = document.getElementById('c');
+    ctx = c.getContext('2d'); 
 
-initGame();
+    // RE-ATTACH INPUT TO THE SPECIFIC CANVAS
+    c.onmousedown = c.ontouchstart = (e) => { 
+        if(e.cancelable) e.preventDefault(); 
+        if(active) { 
+            isDragging = true; 
+            targetA = -0.8; 
+        } 
+    };
+    
+    window.onmouseup = window.ontouchend = () => { 
+        isDragging = false; 
+        targetA = 0; 
+    };
+
+    active = false;
+    // Teapot position remains identical to LANDSCAPE_WORKING
+    b = { x: 180, y: 80, w: 70, h: 80, a: 0 }; 
+
+    updateTheme(); 
+    requestAnimationFrame(draw);
+}
+
+// EXECUTE BOOT
+finalBoot();
+
+
 </script>
 </body>
 </html>
