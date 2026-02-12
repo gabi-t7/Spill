@@ -516,7 +516,7 @@ function drawCyl(x,y,w,h,fV,cap,col,isP,angle=0){
         }
         ctx.restore();
     }
-    ctx.strokeStyle="#4a4e50";ctx.lineWidth=isP?3:2;
+    ctx.strokeStyle="#4a4e50";ctx.lineWidth=isP?2:2;
     ctx.beginPath(); ctx.ellipse(x,y,w/2,8,0,0,Math.PI*2); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x-w/2,y); ctx.lineTo(x-w/2,y+h); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x+w/2,y); ctx.lineTo(x+w/2,y+h); ctx.stroke();
@@ -747,7 +747,7 @@ function finalBoot() {
 
     active = false;
     // Teapot position remains identical to LANDSCAPE_WORKING
-    b = { x: 180, y: 80, w: 70, h: 80, a: 0 }; 
+    b = { x: 180, y: 100, w: 70, h: 80, a: 0 }; 
 
     updateTheme(); 
     requestAnimationFrame(draw);
