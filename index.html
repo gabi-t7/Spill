@@ -43,19 +43,33 @@
     object-position: top; /* Keeps the teapot and belt at the top */
 }
 
+#w { color: #ff4757; transition: 0.3s; }
+
+.danger-pulse { 
+    animation: dripPulse 0.5s infinite alternate !important; 
+    font-weight: 900 !important;
+}
+
+@keyframes dripPulse { 
+    from { transform: scale(1); text-shadow: 0 0 5px rgba(255, 71, 87, 0); } 
+    to { transform: scale(1.3); text-shadow: 0 0 15px rgba(255, 71, 87, 0.8); } 
+}
 
 
     /* 2. HUD SIDEBARS */
+       /* 2. HUD SIDEBARS */
     .hud-module {
-        width: 220px !important;
+        width: fit-content !important; /* Only as wide as the text */
+        min-width: 140px; /* Optional: prevents it from being TOO tiny */
         background: transparent !important; 
         border: 1px solid #4a4e50;
-        padding: 15px;
+        padding: 12px 18px; /* Slightly wider padding for a clean look */
         color: #faedcd;
         font-size: 13px;
         border-radius: 8px;
         display: table !important; 
     }
+
     .hud-module div { display: table-row; white-space: nowrap !important; }
     #w { color: #ff4757; font-weight: 900; display: inline-block !important; width: auto !important; }
 
@@ -95,7 +109,22 @@
     button:hover { transform: scale(1.04); box-shadow: 0 0 25px rgba(52, 231, 228, 0.6) !important; }
 
     /* 6. HINTS & FEEDBACK */
-    #pour-hint { position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%); font-family: sans-serif; font-size: 18px; font-weight: 900; color: #fff; z-index: 10001; display: none; animation: breathe 2s infinite ease-in-out; }
+  #pour-hint { 
+    position: absolute; 
+    top: 25%; 
+    left: 50%; 
+    transform: translate(-50%, -50%); 
+    font-family: sans-serif; 
+    font-size: 18px; /* KEPT: Original size */
+    font-weight: 900; 
+    color: #fff; 
+    z-index: 10001; 
+    display: none; 
+    animation: breathe 2s infinite ease-in-out;
+    /* THE ONLY CHANGE: Clicks now pass through to the Teapot */
+    pointer-events: none; 
+}
+
     @keyframes breathe { 0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.9); } 50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.1); } }
     #pf { color: #0f0; top: 45%; font-size: 24px; position: absolute; width: 100%; text-align: center; font-weight: bold; text-shadow: 0 0 10px #0f0; animation: glowPulse 1s infinite alternate; display: none; }
     @keyframes glowPulse { from { text-shadow: 0 0 5px #0f0; transform: scale(1); } to { text-shadow: 0 0 25px #0f0; transform: scale(1.1); } }
@@ -152,7 +181,8 @@
     <div id="hud-left" class="hud-module">
         LEVEL: <span id="lvl-info">...</span><br>
         PROGRESS: <span id="mug-progress">0/0</span><br>
-        SPILL: <span id="w">0</span>ml
+      	SPILL: <span id="w">0</span>&nbsp;ml
+
     </div>
 
     <!-- THE ANCHOR: Now with Hard-Lock on dimensions and Overflow Hidden -->
@@ -233,19 +263,28 @@ let score=0, bestScore=parseInt(localStorage.getItem('spill_total_score'))||0;
 if(ADMIN===1){ document.getElementById('dev-container').innerHTML = `<button id="dev-btn-style" onclick="skipLevel()">SKIP LEVEL</button>`; }
 
 async function initGame() {
-    // FIX: Re-sync bestScore on every init
+    // 1. Get the value
     bestScore = parseInt(localStorage.getItem('spill_total_score')) || 0;
-    document.getElementById('best-score').innerText = bestScore;
 
     if (sdk) { 
-        try { 
-            await sdk.init(); 
-            updateLeaderboard(); 
-        } catch (e) {} 
+        try { await sdk.init(); updateLeaderboard(); } catch (e) {} 
     }
+
+    // 2. Let the theme and levels setup first
     updateTheme(); 
+
+    setTimeout(() => {
+        const bestEl = document.getElementById('best-score');
+        if (bestEl) {
+            bestEl.innerText = bestScore;
+            console.log("HUD Force-Update to:", bestScore);
+        }
+    }, 50); // 50ms delay to let the DOM settle
+    
     draw();
 }
+
+
 
 async function updateLeaderboard() {
     if(!sdk) return;
@@ -280,6 +319,11 @@ function updateTheme() {
     if (startMenu) startMenu.style.display = 'flex';
     
     active = false;
+    
+    const bestEl = document.getElementById('best-score');
+    if(bestEl && bestEl.innerText != bestScore) {
+        bestEl.innerText = bestScore;
+    }
 }
 
 
@@ -354,24 +398,44 @@ function createBP() {
     mugCount++;
 }
 
-
 function handleLR() {
+console.log("Current Score:", score, "Stored Best:", localStorage.getItem('spill_total_score'));
     const adj = document.getElementById('vibe-label').innerText;
-    // If it's not a retry-worthy message, we move forward
     const isFail = (adj === "FAILED" || adj === "TOO MUCH SPILL!");
 
     if (!isFail) {
+        // 1. Calculate tiered bonus
+        let bonus = 100; 
+        if (adj === "FLAWLESS!") bonus = 300;
+        else if (adj === "GROOVY") bonus = 200;
+
+        score += bonus;
+        document.getElementById('curr-score').innerText = score;
+
+        // 2. THE FIX: Check and save Local Best after EVERY successful level
+        // We parse it here to ensure the comparison is 100% accurate
+        let currentStoredBest = parseInt(localStorage.getItem('spill_total_score')) || 0;
+        
+        if (score > currentStoredBest) {
+            bestScore = score;
+            localStorage.setItem('spill_total_score', bestScore);
+            document.getElementById('best-score').innerText = bestScore;
+        }
+
+        // 3. Level transition logic (Untouched)
         if (currentLevel >= LevelConfigs.length) {
+            document.getElementById('final-score').innerText = score;
             document.getElementById('game-over').style.display = 'flex';
         } else {
-            currentLevel++; // MOVE TO LEVEL 2
+            currentLevel++;
             resetLevel(currentLevel); 
         }
     } else {
-        resetLevel(currentLevel); // RETRY LEVEL 1
+        resetLevel(currentLevel);
     }
     document.getElementById('lr').style.display = 'none';
 }
+
 
 function skipLevel(){
     if(currentLevel >= LevelConfigs.length){
@@ -384,7 +448,7 @@ function resetLevel(lvl){
     currentLevel=lvl;mugCount=0;levelMugsProcessed=0;globalWaste=0;levelTotalFill=0;levelTotalCap=0;ps=[];bps=[];active=false;spawnTimer=10;shake=0;
     document.getElementById('missed').style.display='none';
     document.getElementById('w').innerText="0";
-    document.getElementById('w').classList.remove('flash-red');
+    document.getElementById('w').classList.remove('danger-pulse'); // Stop the pulse
     updateTheme();
 }
 
@@ -625,8 +689,15 @@ if((c.x - c.w/2) > 215 && !c.proc){
         if(p.landed && (p.life -= dt) <= 0) ps.splice(i, 1);
     }
 
-    // Only update spill HUD if a drop actually hit the floor
-    if(wasteChanged) document.getElementById('w').innerText = Math.floor(globalWaste);
+       // Only update spill HUD if a drop actually hit the floor
+    if(wasteChanged) {
+        document.getElementById('w').innerText = Math.floor(globalWaste);
+        
+        // Trigger pulse when things get dangerous
+        if(globalWaste >= 16) {
+            document.getElementById('w').classList.add('danger-pulse');
+        }
+    }
 
     ctx.restore(); 
     requestAnimationFrame(draw);
