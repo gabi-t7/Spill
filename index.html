@@ -31,14 +31,16 @@
 }
 
 /* 3. THE CANVAS - Absolute keeps it from pushing the HUD */
-#c { 
+#c {
     position: absolute !important;
     top: 0;
     left: 0;
-    width: 360px !important; 
-    height: 640px !important; /* The 640px buffer that provides the speed */
-    background: #000;
+    width: 100% !important; /* Forces it to fill the width of the anchor */
+    height: auto !important; /* Let the aspect ratio handle the height */
+    min-height: 100% !important; /* Ensures it at least fills the square */
     display: block;
+    object-fit: cover; /* This is the magic: it prevents X or Y stretching */
+    object-position: top; /* Keeps the teapot and belt at the top */
 }
 
 
@@ -100,10 +102,53 @@
     #missed { position: absolute; width: 100%; text-align: center; color: #ff4757; top: 35%; font-size: 80px; display: none; }
     #copyright { position: absolute; bottom: 10px; width: 100%; text-align: center; font-size: 8px; color: #444; }
 
-    @media (max-width: 700px) {
-        #game-container { flex-direction: column; gap: 10px; }
-        .hud-module { width: 330px; }
+  @media (max-width: 700px) {
+    /* 1. FLIP TO VERTICAL STACK */
+    #game-container {
+        flex-direction: column !important;
+        gap: 0px !important;
+        justify-content: flex-start !important;
+        height: 100vh;
+        width: 100vw;
     }
+
+    /* 2. MAKE SQUARE HERO: Scale to full width */
+    .game-anchor {
+        width: 100vw !important;
+        height: 100vw !important; /* Force a perfect square based on screen width */
+        border: none !important;
+        border-radius: 0 !important;
+    }
+
+  #c {
+    width: 100vw !important; 
+    height: 100vw !important; /* Visual display is a square */
+    display: block;
+    image-rendering: auto; /* Let the browser smooth naturally */
+}
+
+    /* 3. HUDs: Slimmer and stacked */
+    .hud-module {
+        width: 100vw !important;
+        box-sizing: border-box;
+        border: none !important;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        border-radius: 0 !important;
+        padding: 10px 20px !important;
+        display: flex !important; /* Switch to flex for easier horizontal spacing */
+        justify-content: space-between;
+    }
+    
+    .hud-module div { display: block !important; }
+
+    /* 4. OVERLAYS: Adjust to the new full-width square */
+    #level-start, #game-over, #lr {
+        width: 100vw !important;
+        height: 100vw !important;
+        top: 0; left: 0;
+    }
+}
+
 </style>
 
 </head>
@@ -603,10 +648,16 @@ const handleEnd = () => { isDragging = false; targetA = 0; };
 
 function syncCanvasNoStretch() {
     const c = document.getElementById('c');
-    // We lock the internal logic to a fixed 360x360
+    // We stick to the "Fast" 640 height buffer. 
+    // We don't use DPR here because object-fit:cover handles the 'smoothness' 
+    // better on desktop/mobile without breaking your physics.
     c.width = 360;
-    c.height = 640;
+    c.height = 640; 
+
+    const ctx = c.getContext('2d');
+    ctx.resetTransform(); // Ensure no leftover scales are active
 }
+
 
 function finalBoot() {
     // 1. Run the sync logic first
