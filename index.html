@@ -95,6 +95,7 @@
 
     #ls-title, #go-content h1, #lr-title { color: #ffffff; text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); font-size: 24px; }
     #ls-theme, #vibe-label { color: #ffdd59; font-size: 20px; font-weight: bold; text-shadow: 0 0 8px rgba(255, 221, 89, 0.4); }
+    #extra-message { color: #ffdd59; font-size: 15px; font-weight: bold; text-shadow: 0 0 8px rgba(255, 221, 89, 0.4); }
     #stars { color: #ffd700; font-size: 32px; letter-spacing: 5px; }
     .stat-row { display: flex; justify-content: space-between; width: 240px; margin: 4px auto !important; font-size: 12px; color: #d2dae2; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 
@@ -196,6 +197,7 @@
             <div id="ls-content">
                 <h1 id="ls-title">LEVEL 1</h1>
                 <h2 id="ls-theme">...</h2>
+                <h2 id="extra-message">...</h2>
                 <button onclick="startLevel()">START</button>
             </div>
         </div>
@@ -203,20 +205,16 @@
         <div id="game-over">
             <div id="go-content">
                 <h1>CONGRATULATIONS!</h1>
-                <p>You mastered every level.</p>
-                <h2>TOTAL SCORE: <span id="final-score" style="color:#0f0">0</span></h2>
+                <h1>YOU WON THE GAME!</h1>
+                <h1>TOTAL SCORE: <span id="final-score" style="color:#0f0">0</span></h1>
                 <button onclick="location.reload()">PLAY AGAIN</button>
             </div>
         </div>
 
         <div id="lr">
-            <h2 id="lr-title">LEVEL REPORT</h2>
+            <h2 id="lr-title">SPILL:<span id="lr-waste">0ml</span></h2>
             <div id="stars">☆☆☆☆☆</div>
-            <span id="vibe-label">...</span>
-            <div id="stats-area">
-                <div class="stat-row"><span>VOLUME FILLED:</span><span id="lr-acc">0%</span></div>
-                <div class="stat-row"><span>SPILL:</span><span id="lr-waste">0ml</span></div>
-            </div>
+            <span id="vibe-label">...</span> <span id="extra-points" style="color:#0f0">0</span>
             <button id="lr-btn" onclick="handleLR()">CONTINUE</button>
         </div>
 
@@ -241,16 +239,15 @@ let hasEverShownHint = false;
 
 const LevelConfigs = [
     { n: "WARMUP", c: "#ff4500", delay: 0, mugs: [{w:200, h:40, s:0.7}], gc: "#1a0a05"},
-    { n: "OIL", c: "#1a1a1a", delay: 350, mugs: [{w:60, h:95, s:0.5}, {w:70, h:100, s:0.4}, {w:70, h:90, s:0.6}, {w:130, h:70, s:0.5}, {w:60, h:100, s:0.6}], gc: "#ffffff"},
+    { n: "OIL", c: "#1a1a1a", delay: 350, mugs: [{w:60, h:95, s:0.5}, {w:70, h:100, s:0.4}, {w:70, h:90, s:0.6}, {w:130, h:70, s:0.5}, {w:60, h:100, s:0.6}], gc: "#ffffff"}, 
     { n: "VOLCANO", c: "#ff4500", delay: 320, mugs: [{w:50, h:120, s:0.60}, {w:120, h:50, s:0.5}, {w:50, h:100, s:0.65}, {w:90, h:90, s:0.55}, {w:70, h:110, s:0.75}], gc: "#1a0a05"},
     { n: "RADIOACTIVE", c: "#39ff14", delay: 300, mugs: [{w:100, h:80, s:0.6}, {w:60, h:60, s:0.8}, {w:90, h:110, s:0.7}, {w:80, h:100, s:0.6}, {w:60, h:110, s:0.8}], gc: "#333333"},
     { n: "ORANGE", c: "#ff8c00", delay: 220, mugs:  [{w:75, h:55, s:0.5},  {w:75, h:40, s:0.6}, {w:80, h:55, s:0.55}, {w:65, h:55, s:0.6}, {w:75, h:65, s:0.5}, {w:75, h:45, s:0.7}, {w:80, h:75, s:0.7}, {w:75, h:65, s:0.6}, {w:85, h:65, s:0.5}  ], gc: "#ffffff"},
     { n: "MAGIC", c: "#800080", delay: 300, mugs: [{w:60, h:120, s:0.7}, {w:150, h:50, s:0.45}, {w:80, h:120, s:0.65}, {w:110, h:110, s:0.6}, {w:70, h:120, s:0.7}, {w:90, h:110, s:0.7}, {w:80, h:120, s:0.8},{w:75, h:55, s:0.5},  {w:75, h:40, s:0.6}, {w:80, h:55, s:0.8}], gc: "#000000"},
     { n: "LABORATORY", c: "#04d9ff", delay: 240, mugs: [{w:50, h:100, s:0.6}, {w:50, h:120, s:0.7}, {w:60, h:80, s:0.8}, {w:50, h:110, s:0.65}, {w:50, h:100, s:0.7}, {w:60, h:90, s:0.9}, {w:50, h:100, s:0.8},{w:55, h:90, s:0.9}], gc: "#ffffff"},
     { n: "TOMATO", c: "#FF0000", delay: 200, mugs: [{w:75, h:55, s:0.9},  {w:75, h:40, s:0.6}, {w:80, h:55, s:0.55}, {w:65, h:55, s:0.8}, {w:75, h:65, s:0.5}, {w:75, h:45, s:0.7}, {w:80, h:75, s:0.8}, {w:75, h:65, s:0.6}, {w:85, h:65, s:0.9}, {w:75, h:55, s:0.5},  {w:75, h:40, s:0.6}, {w:80, h:55, s:0.8}, {w:65, h:55, s:0.6}, {w:75, h:65, s:0.9}, {w:75, h:45, s:0.7}, {w:80, h:75, s:0.7}, {w:75, h:65, s:0.9}, {w:85, h:65, s:0.5}, {w:75, h:55, s:0.5},  {w:75, h:40, s:0.8}, {w:80, h:55, s:0.9}, {w:65, h:55, s:0.6}, {w:75, h:65, s:0.8}, {w:75, h:45, s:0.7}, {w:80, h:75, s:0.7}, {w:75, h:65, s:0.9}, {w:85, h:65, s:0.7}], gc: "#000000"},
-    { n: "LAVA", c: "#ff4500", delay: 100, mugs:[{w:60, h:75, s:0.9},  {w:155, h:20, s:1}, {w:50, h:55, s:0.7}, {w:65, h:45, s:0.8}, {w:155, h:10, s:1}, {w:55, h:55, s:0.7}, {w:50, h:65, s:0.8}, {w:100, h:10, s:1}, {w:45, h:65, s:0.9}, {w:170, h:15, s:1.3},  {w:75, h:40, s:0.9}, {w:70, h:45, s:0.8}, {w:65, h:55, s:0.7}, {w:155, h:20, s:1}, {w:45, h:85, s:0.7}, {w:60, h:45, s:0.7}, {w:45, h:65, s:0.9}, {w:155, h:10, s:1}, {w:55, h:55, s:0.8},  {w:75, h:40, s:0.8}, {w:60, h:55, s:0.8}, {w:100, h:20, s:1}, {w:55, h:65, s:0.8}, {w:155, h:15, s:1}, {w:55, h:55, s:0.9},  {w:75, h:40, s:0.8}, {w:60, h:55, s:0.9}, {w:150, h:10, s:1}, {w:75, h:65, s:0.8}, {w:75, h:45, s:0.7}, {w:150, h:20, s:0.7}, {w:45, h:65, s:0.9}, {w:55, h:65, s:0.7}], gc: "#1a0a05"},
-    { n: "NUKE", c: "#39ff14", delay: 100, mugs: [{w:200, h:20, s:0.6}, {w:40, h:40, s:0.8}, {w:40, h:110, s:0.8}, {w:40, h:70, s:0.9}, {w:200, h:10, s:1.2}, {w:40, h:40, s:0.8}, {w:40, h:60, s:0.7},{w:200, h:10, s:0.8}, {w:40, h:40, s:0.9}, {w:200, h:20, s:0.8}, {w:40, h:70, s:0.9}, {w:200, h:10, s:1.2}, {w:40, h:50, s:0.8},{w:200, h:10, s:0.8}, {w:40, h:40, s:0.9}  ], gc: "#333333"}
- 
+    { n: "LAVA", c: "#ff4500", delay: 100, mugs:[{w:60, h:75, s:0.9},  {w:155, h:20, s:1}, {w:50, h:55, s:0.7}, {w:65, h:45, s:0.8}, {w:155, h:10, s:1}, {w:55, h:55, s:0.7}, {w:50, h:65, s:0.8}, {w:100, h:10, s:1}, {w:45, h:65, s:0.9}, {w:170, h:15, s:1.3},  {w:75, h:40, s:0.9}, {w:70, h:45, s:0.8}, {w:65, h:55, s:0.7}, {w:155, h:20, s:1}, {w:45, h:85, s:0.7}, {w:60, h:45, s:0.7}, {w:45, h:65, s:0.9}, {w:155, h:10, s:1}, {w:55, h:55, s:0.8},  {w:75, h:40, s:0.8}, {w:60, h:55, s:0.8}, {w:100, h:20, s:1}, {w:55, h:65, s:0.8}, {w:155, h:15, s:1}, {w:55, h:55, s:0.9},  {w:75, h:40, s:0.8}, {w:60, h:55, s:0.9}, {w:150, h:10, s:1}, {w:75, h:65, s:0.8}, {w:75, h:45, s:0.7}, {w:150, h:20, s:0.7}, {w:45, h:65, s:0.9}, {w:55, h:65, s:0.7}], gc: "#1a0a05"}, 
+    { n: "NUKE", c: "#39ff14", delay: 100, mugs: [{w:200, h:20, s:0.6}, {w:40, h:40, s:0.8}, {w:40, h:110, s:0.8}, {w:40, h:70, s:0.9}, {w:200, h:10, s:1.2}, {w:40, h:40, s:0.8}, {w:40, h:60, s:0.7},{w:200, h:10, s:0.8}, {w:40, h:40, s:0.9}, {w:200, h:20, s:0.8}, {w:40, h:70, s:0.9}, {w:200, h:10, s:1.2}, {w:40, h:50, s:0.8},{w:200, h:10, s:0.8}, {w:40, h:40, s:0.9}  ], gc: "#333333"} 
 ];
 
 let canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
@@ -304,8 +301,13 @@ function updateTheme() {
     // Fill the Start Menu Text
     const title = document.getElementById('ls-title');
     const theme = document.getElementById('ls-theme');
+    const extraMessage = document.getElementById('extra-message');
     if (title) title.innerText = `Level ${currentLevel}`;
     if (theme) theme.innerText = t.n;
+    
+    if (extraMessage && (currentLevel==1)) extraMessage.innerText = 'Fill every container to the brim.\n Do NOT spill more than 20ml';
+    else extraMessage.innerText="";
+    
 
     // Fill the Sidebar HUD
     const lvlInfo = document.getElementById('lvl-info');
@@ -462,12 +464,12 @@ function displayLR(acc, waste, failed, customMsg = ""){
 
     const starsEl = document.getElementById('stars');
     const vibeEl = document.getElementById('vibe-label');
-    const statsArea = document.getElementById('stats-area');
+
     const btn = document.getElementById('lr-btn');
     const title = document.getElementById('lr-title');
 
     let w = Math.floor(waste);
-    document.getElementById('lr-acc').innerText = (acc >= 98 ? 100 : acc) + "%";
+ 
     document.getElementById('lr-waste').innerText = w + "ml";
 
     // THE FIX: Explicitly check for the 20ml fail condition first
@@ -475,24 +477,31 @@ function displayLR(acc, waste, failed, customMsg = ""){
         // KILL the success UI
         title.style.display = 'none';      
         starsEl.style.display = 'none';    
-        statsArea.style.display = 'none';  
         
         // SHOW the fail UI
         vibeEl.innerText = (w >= 20) ? "TOO MUCH SPILL!" : "FAILED";
         vibeEl.style.display = 'block';
+        document.getElementById('extra-points').innerText = "";
         btn.innerText = "RETRY";
     } 
     else {
         // SHOW the success UI
         title.style.display = 'block';
         starsEl.style.display = 'block';
-        statsArea.style.display = 'block';
         btn.innerText = "CONTINUE";
 
         // Determine Stars (Only 3, 4, or 5)
-        let s = "★★★☆☆", adj = "Good";
-        if (w === 0) { s = "★★★★★"; adj = "Flawless!"; }
-        else if (w <= 10) { s = "★★★★☆"; adj = "Groovy"; }
+        let s = "★★★☆☆", adj = "Good";   
+        document.getElementById('extra-points').innerText = "+100 points";
+
+        if (w === 0) { s = "★★★★★"; adj = "Flawless!";  
+         document.getElementById('extra-points').innerText = "+300 points";
+ 	}
+        else if (w <= 10) {
+         s = "★★★★☆"; 
+         adj = "Groovy"; 
+         document.getElementById('extra-points').innerText = "+200 points";
+         }
 
         starsEl.innerText = s;
         vibeEl.innerText = adj;
