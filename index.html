@@ -3,7 +3,7 @@
 <head>
     <title>Spill</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <script src="https://sdk.crazygames.com"></script>
+    <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 <style>
     /* 1. MASTER LAYOUT */
     body { margin: 0; background: #0f171e; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; overflow: hidden; font-family: monospace; }
@@ -228,6 +228,7 @@
     <div id="hud-right" class="hud-module">
         SCORE: <span id="curr-score" style="color:#0f0">0</span><br>
         LOCAL BEST: <span id="best-score">0</span>
+        <span id="world-label" style="display:none">WORLD BEST: <span id="world-score">0</span> (<span id="world-name" style="color:#ffd700">...</span>)</span>
     </div>
 
     <div id="copyright">© <span id="year"></span> Spill Engine. All Rights Reserved.</div>
@@ -236,15 +237,21 @@
 let ADMIN = 0; 
 
 let hasEverShownHint = false; 
+const cylGradients = {};
 
 const LevelConfigs = [
     { n: "WARMUP", c: "#ff4500", delay: 0, mugs: [{w:200, h:40, s:0.7}], gc: "#1a0a05"},
-    { n: "OIL", c: "#1a1a1a", delay: 350, mugs: [{w:60, h:95, s:0.5}, {w:70, h:100, s:0.4}, {w:70, h:90, s:0.6}, {w:130, h:70, s:0.5}, {w:60, h:100, s:0.6}], gc: "#ffffff"}, 
-    { n: "VOLCANO", c: "#ff4500", delay: 320, mugs: [{w:50, h:120, s:0.60}, {w:120, h:50, s:0.5}, {w:50, h:100, s:0.65}, {w:90, h:90, s:0.55}, {w:70, h:110, s:0.75}], gc: "#1a0a05"},
-    { n: "RADIOACTIVE", c: "#39ff14", delay: 300, mugs: [{w:100, h:80, s:0.6}, {w:60, h:60, s:0.8}, {w:90, h:110, s:0.7}, {w:80, h:100, s:0.6}, {w:60, h:110, s:0.8}], gc: "#333333"},
-    { n: "ORANGE", c: "#ff8c00", delay: 220, mugs:  [{w:75, h:55, s:0.5},  {w:75, h:40, s:0.6}, {w:80, h:55, s:0.55}, {w:65, h:55, s:0.6}, {w:75, h:65, s:0.5}, {w:75, h:45, s:0.7}, {w:80, h:75, s:0.7}, {w:75, h:65, s:0.6}, {w:85, h:65, s:0.5}  ], gc: "#ffffff"},
+    {  n: "RADIOACTIVE", c: "#39ff14", delay: 280, mugs: [{w:110, h:35, s:0.6}, {w:60, h:80, s:0.6}, {w:110, h:40, s:0.6}], gc: "#333333"},   
+    { n: "VOLCANO", c: "#ff4500", delay: 290, mugs: [{w:60, h:110, s:0.60}, {w:120, h:50, s:0.5}, {w:50, h:100, s:0.65}, {w:90, h:90, s:0.55}, {w:70, h:100, s:0.75}], gc: "#1a0a05"}, 
+    { 
+  n: "Aluminium", 
+  c: "#71797E",
+  delay: 300, 
+  mugs: [{w:100, h:70, s:0.6}, {w:60, h:60, s:0.8}, {w:60, h:110, s:0.7}, {w:80, h:100, s:0.6}, {w:60, h:110, s:0.8}], 
+  gc: "#000000"
+},
+    { n: "ORANGE", c: "#ff8c00", delay: 220, mugs:  [{w:75, h:55, s:0.5},  {w:200, h:10, s:0.8}, {w:75, h:40, s:0.6}, {w:80, h:55, s:0.55}, {w:65, h:55, s:0.6}, {w:75, h:65, s:0.5}, {w:200, h:10, s:0.8}, {w:75, h:45, s:0.7}, {w:80, h:75, s:0.7}, {w:75, h:65, s:0.6}, {w:85, h:65, s:0.5}  ], gc: "#ffffff"},
     { n: "MAGIC", c: "#800080", delay: 300, mugs: [{w:60, h:120, s:0.7}, {w:150, h:50, s:0.45}, {w:80, h:120, s:0.65}, {w:110, h:110, s:0.6}, {w:70, h:120, s:0.7}, {w:90, h:110, s:0.7}, {w:80, h:120, s:0.8},{w:75, h:55, s:0.5},  {w:75, h:40, s:0.6}, {w:80, h:55, s:0.8}], gc: "#000000"},
-    { n: "LABORATORY", c: "#04d9ff", delay: 240, mugs: [{w:50, h:100, s:0.6}, {w:50, h:120, s:0.7}, {w:60, h:80, s:0.8}, {w:50, h:110, s:0.65}, {w:50, h:100, s:0.7}, {w:60, h:90, s:0.9}, {w:50, h:100, s:0.8},{w:55, h:90, s:0.9}], gc: "#ffffff"},
     { n: "TOMATO", c: "#FF0000", delay: 200, mugs: [{w:75, h:55, s:0.9},  {w:75, h:40, s:0.6}, {w:80, h:55, s:0.55}, {w:65, h:55, s:0.8}, {w:75, h:65, s:0.5}, {w:75, h:45, s:0.7}, {w:80, h:75, s:0.8}, {w:75, h:65, s:0.6}, {w:85, h:65, s:0.9}, {w:75, h:55, s:0.5},  {w:75, h:40, s:0.6}, {w:80, h:55, s:0.8}, {w:65, h:55, s:0.6}, {w:75, h:65, s:0.9}, {w:75, h:45, s:0.7}, {w:80, h:75, s:0.7}, {w:75, h:65, s:0.9}, {w:85, h:65, s:0.5}, {w:75, h:55, s:0.5},  {w:75, h:40, s:0.8}, {w:80, h:55, s:0.9}, {w:65, h:55, s:0.6}, {w:75, h:65, s:0.8}, {w:75, h:45, s:0.7}, {w:80, h:75, s:0.7}, {w:75, h:65, s:0.9}, {w:85, h:65, s:0.7}], gc: "#000000"},
     { n: "LAVA", c: "#ff4500", delay: 100, mugs:[{w:60, h:75, s:0.9},  {w:155, h:20, s:1}, {w:50, h:55, s:0.7}, {w:65, h:45, s:0.8}, {w:155, h:10, s:1}, {w:55, h:55, s:0.7}, {w:50, h:65, s:0.8}, {w:100, h:10, s:1}, {w:45, h:65, s:0.9}, {w:170, h:15, s:1.3},  {w:75, h:40, s:0.9}, {w:70, h:45, s:0.8}, {w:65, h:55, s:0.7}, {w:155, h:20, s:1}, {w:45, h:85, s:0.7}, {w:60, h:45, s:0.7}, {w:45, h:65, s:0.9}, {w:155, h:10, s:1}, {w:55, h:55, s:0.8},  {w:75, h:40, s:0.8}, {w:60, h:55, s:0.8}, {w:100, h:20, s:1}, {w:55, h:65, s:0.8}, {w:155, h:15, s:1}, {w:55, h:55, s:0.9},  {w:75, h:40, s:0.8}, {w:60, h:55, s:0.9}, {w:150, h:10, s:1}, {w:75, h:65, s:0.8}, {w:75, h:45, s:0.7}, {w:150, h:20, s:0.7}, {w:45, h:65, s:0.9}, {w:55, h:65, s:0.7}], gc: "#1a0a05"}, 
     { n: "NUKE", c: "#39ff14", delay: 100, mugs: [{w:200, h:20, s:0.6}, {w:40, h:40, s:0.8}, {w:40, h:110, s:0.8}, {w:40, h:70, s:0.9}, {w:200, h:10, s:1.2}, {w:40, h:40, s:0.8}, {w:40, h:60, s:0.7},{w:200, h:10, s:0.8}, {w:40, h:40, s:0.9}, {w:200, h:20, s:0.8}, {w:40, h:70, s:0.9}, {w:200, h:10, s:1.2}, {w:40, h:50, s:0.8},{w:200, h:10, s:0.8}, {w:40, h:40, s:0.9}  ], gc: "#333333"} 
@@ -259,40 +266,83 @@ let score=0, bestScore=parseInt(localStorage.getItem('spill_total_score'))||0;
 
 if(ADMIN===1){ document.getElementById('dev-container').innerHTML = `<button id="dev-btn-style" onclick="skipLevel()">SKIP LEVEL</button>`; }
 
+// Rename it so there is NO "sdk" name to conflict with
+window.crazySDK = null; 
+
+const initializeSDK = async () => {
+    if (window.crazySDK) return; 
+
+    if (window.CrazyGames && window.CrazyGames.SDK) {
+        try {
+            // FIRE AND FORGET: Get the init started
+            const ready = await window.CrazyGames.SDK.init();
+            
+            // THE "GREEN LIGHT" FIX: Fire this before ANY other logic (leaderboards, logs, etc.)
+            ready.game.gameplayStart(); 
+            
+            window.crazySDK = ready;
+            console.log("--- SDK READY ---");
+            updateLeaderboard(); 
+
+            setInterval(() => {
+                if (window.crazySDK) updateLeaderboard();
+            }, 60000);
+
+        } catch (e) {
+            console.error("Init failed:", e);
+        }
+    } else {
+        // Fast polling for the bot's sake
+        setTimeout(initializeSDK, 50); 
+    }
+};
+
+
+initializeSDK();
+
+/*
 async function initGame() {
-    // 1. Get the value
+    console.log("Game Init!");
     bestScore = parseInt(localStorage.getItem('spill_total_score')) || 0;
 
     if (sdk) { 
-        try { await sdk.init(); updateLeaderboard(); } catch (e) {} 
+        try { 
+            await sdk.init(); 
+            sdk.game.gameplayStart(); // Important for enabling ads!
+            updateLeaderboard(); 
+        } catch (e) {
+            console.log("SDK Init ignored or failed:", e);
+        } 
     }
 
-    // 2. Let the theme and levels setup first
     updateTheme(); 
 
     setTimeout(() => {
         const bestEl = document.getElementById('best-score');
         if (bestEl) {
             bestEl.innerText = bestScore;
-            console.log("HUD Force-Update to:", bestScore);
         }
-    }, 50); // 50ms delay to let the DOM settle
+    }, 50);
     
     draw();
 }
-
-
+*/
 
 async function updateLeaderboard() {
-    if(!sdk) return;
+    // 1. If SDK isn't ready, don't even try
+    if(!window.crazySDK || !window.crazySDK.leaderboard) return;
+    
     try {
-        const res = await sdk.leaderboard.getRecords('main', {limit:1});
-        if(res.items && res.items.length){
+        const res = await window.crazySDK.leaderboard.getRecords('main', {limit:1});
+        if(res.items && res.items.length > 0){
+            const top = res.items[0]; 
             document.getElementById('world-label').style.display = 'inline';
-            document.getElementById('world-score').innerText = res.items.score;
-            document.getElementById('world-name').innerText = res.items.username;
+            document.getElementById('world-score').innerText = top.score;
+            document.getElementById('world-name').innerText = top.username;
         }
-    } catch(e){}
+    } catch(e){
+        console.log("Leaderboard fetch failed:", e);
+    }
 }
 
 function updateTheme() {
@@ -308,6 +358,12 @@ function updateTheme() {
     if (extraMessage && (currentLevel==1)) extraMessage.innerText = 'Fill every container to the brim.\n Do NOT spill more than 20ml';
     else extraMessage.innerText="";
     
+    if (currentLevel === 1 && window.innerWidth > 1024 && !window.primed) {
+       for(let i = 0; i < 100; i++) {
+        // Vary the fill slightly so the browser compiles the 'flicker' logic too
+        drawCyl(-999, -999, 100, 150, i, 100, t.c, false);
+    }
+    }
 
     // Fill the Sidebar HUD
     const lvlInfo = document.getElementById('lvl-info');
@@ -400,42 +456,58 @@ function createBP() {
     mugCount++;
 }
 
-function handleLR() {
-console.log("Current Score:", score, "Stored Best:", localStorage.getItem('spill_total_score'));
+async function handleLR() {
+    console.log("Current Score:", score, "Stored Best:", localStorage.getItem('spill_total_score'));
     const adj = document.getElementById('vibe-label').innerText;
-    const isFail = (adj === "FAILED" || adj === "TOO MUCH SPILL!");
+    const isFail = (adj === "FILL TO THE BRIM!" || adj === "TOO MUCH SPILL!");
 
-    if (!isFail) {
-        // 1. Calculate tiered bonus
-        let bonus = 100; 
-        if (adj === "FLAWLESS!") bonus = 300;
-        else if (adj === "GROOVY") bonus = 200;
+    const finalize = () => {
+        if (!isFail) {
+            let bonus = 100; 
+            if (adj === "FLAWLESS!") bonus = 300;
+            else if (adj === "GROOVY") bonus = 200;
 
-        score += bonus;
-        document.getElementById('curr-score').innerText = score;
+            score += bonus;
+            document.getElementById('curr-score').innerText = score;
 
-        // 2. THE FIX: Check and save Local Best after EVERY successful level
-        // We parse it here to ensure the comparison is 100% accurate
-        let currentStoredBest = parseInt(localStorage.getItem('spill_total_score')) || 0;
-        
-        if (score > currentStoredBest) {
-            bestScore = score;
-            localStorage.setItem('spill_total_score', bestScore);
-            document.getElementById('best-score').innerText = bestScore;
-        }
+            let currentStoredBest = parseInt(localStorage.getItem('spill_total_score')) || 0;
+            
+            if (score > currentStoredBest) {
+                bestScore = score;
+                localStorage.setItem('spill_total_score', bestScore);
+                document.getElementById('best-score').innerText = bestScore;
+                
+                // v3 Score Sync
+                if (window.crazySDK && window.crazySDK.user) {
+                    window.crazySDK.user.isUserLoggedIn().then(l => { if(l) window.crazySDK.user.syncScore(score); });
+                }
+            }
 
-        // 3. Level transition logic (Untouched)
-        if (currentLevel >= LevelConfigs.length) {
-            document.getElementById('final-score').innerText = score;
-            document.getElementById('game-over').style.display = 'flex';
+            if (currentLevel >= LevelConfigs.length) {
+                document.getElementById('final-score').innerText = score;
+                document.getElementById('game-over').style.display = 'flex';
+            } else {
+                currentLevel++;
+                resetLevel(currentLevel); 
+            }
         } else {
-            currentLevel++;
-            resetLevel(currentLevel); 
+            resetLevel(currentLevel);
         }
-    } else {
-        resetLevel(currentLevel);
+        document.getElementById('lr').style.display = 'none';
+    };
+    
+    if (window.crazySDK && window.crazySDK.ad) { 
+        window.crazySDK.ad.requestAd('midgame', { 
+            adStarted: () => { console.log("Ad started"); },
+            adFinished: finalize, 
+            adError: (error) => {
+                console.log("Ad Error:", error);
+                finalize(); 
+            }
+        }); 
+    } else { 
+        finalize(); 
     }
-    document.getElementById('lr').style.display = 'none';
 }
 
 
@@ -479,7 +551,7 @@ function displayLR(acc, waste, failed, customMsg = ""){
         starsEl.style.display = 'none';    
         
         // SHOW the fail UI
-        vibeEl.innerText = (w >= 20) ? "TOO MUCH SPILL!" : "FAILED";
+        vibeEl.innerText = (w >= 20) ? "TOO MUCH SPILL!" : "FILL TO THE BRIM!";
         vibeEl.style.display = 'block';
         document.getElementById('extra-points').innerText = "";
         btn.innerText = "RETRY";
@@ -509,8 +581,10 @@ function displayLR(acc, waste, failed, customMsg = ""){
 }
 
 function drawCyl(x,y,w,h,fV,cap,col,isP,angle=0){
+    // 1. Shadow (Original)
     ctx.fillStyle="rgba(255,255,255,0.01)";
     ctx.beginPath();ctx.ellipse(x,y,w/2,8,0,Math.PI,0);ctx.lineTo(x+w/2,y+h);ctx.ellipse(x,y+h,w/2,12,0,0,Math.PI);ctx.lineTo(x-w/2,y);ctx.closePath();ctx.fill();
+    
     let fh=(Math.min(fV,cap)/cap)*h;
     if(fV>0){
         ctx.save();
@@ -521,33 +595,54 @@ function drawCyl(x,y,w,h,fV,cap,col,isP,angle=0){
             ctx.beginPath(); ctx.ellipse(0, 0, w/2, 6, 0, 0, Math.PI*2); ctx.fill();
             ctx.fillStyle="rgba(255,255,255,0.45)";ctx.beginPath(); ctx.ellipse(-w/6, -1, w/3, 3, 0, 0, Math.PI*2); ctx.fill();
         } else {
+            // RESTORED: Your original ellipse-based fill to hit the brim perfectly
             ctx.beginPath();ctx.ellipse(x,y+h-fh,w/2-2,6,0,Math.PI,0);ctx.lineTo(x+w/2-2,y+h);ctx.ellipse(x,y+h,w/2-2,10,0,0,Math.PI);ctx.lineTo(x-w/2+2,y+h-fh);ctx.closePath();ctx.fill();
         }
         ctx.restore();
     }
-    ctx.strokeStyle="#4a4e50";ctx.lineWidth=isP?2:2;
+
+    // 2. Outlines (Original)
+    ctx.strokeStyle="#4a4e50";ctx.lineWidth=2;
     ctx.beginPath(); ctx.ellipse(x,y,w/2,8,0,0,Math.PI*2); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x-w/2,y); ctx.lineTo(x-w/2,y+h); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x+w/2,y); ctx.lineTo(x+w/2,y+h); ctx.stroke();
     ctx.beginPath(); ctx.ellipse(x,y+h,w/2,12,0,0,Math.PI); ctx.stroke();
-    let g=ctx.createLinearGradient(x-w/2,0,x+w/2,0);
-    g.addColorStop(0,"rgba(255,255,255,0)"); g.addColorStop(0.1,"rgba(255,255,255,0.25)"); 
-    g.addColorStop(0.2,"rgba(255,255,255,0.05)"); g.addColorStop(0.8,"rgba(255,255,255,0.12)"); g.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(x,y,w/2,8,0,Math.PI,0);ctx.lineTo(x+w/2,y+h);ctx.ellipse(x,y+h,w/2,12,0,0,Math.PI);ctx.lineTo(x-w/2,y);ctx.closePath();ctx.fill();
+
+    // 3. SHINE (Restored Original Logic + Cached Gradient)
+    if(!cylGradients[w]) {
+        let g = ctx.createLinearGradient(-w/2, 0, w/2, 0);
+        g.addColorStop(0,"rgba(255,255,255,0)"); g.addColorStop(0.1,"rgba(255,255,255,0.25)"); 
+        g.addColorStop(0.2,"rgba(255,255,255,0.05)"); g.addColorStop(0.8,"rgba(255,255,255,0.12)"); g.addColorStop(1,"rgba(255,255,255,0)");
+        cylGradients[w] = g;
+    }
+    ctx.save();
+    ctx.translate(x, 0); 
+    ctx.fillStyle=cylGradients[w];
+    ctx.beginPath();ctx.ellipse(0,y,w/2,8,0,Math.PI,0);ctx.lineTo(w/2,y+h);ctx.ellipse(0,y+h,w/2,12,0,0,Math.PI);ctx.lineTo(-w/2,y);ctx.closePath();ctx.fill();
+    ctx.restore();
+
+    // 4. Highlight & Text (Original)
     if(fV>0 && !isP){
         ctx.fillStyle=col;
         ctx.beginPath(); ctx.ellipse(x, y+h-fh, w/2-2, 6, 0, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle="rgba(255,255,255,0.45)"; ctx.beginPath(); ctx.ellipse(x-w/6, y+h-fh-1, w/3, 3, 0, 0, Math.PI*2); ctx.fill();
     }
-    if(!isP && fV > 0 && x > 0 && x < canvas.width){
+    if(!isP && fV > 0 && x > 0 && x < 360){
         ctx.fillStyle = "#0f0"; ctx.font = "bold 14px monospace"; ctx.textAlign = "center";
-        ctx.fillText(Math.min(100, Math.floor((fV/cap)*100)) + "%", x, y - 20);
+      ctx.fillText(Math.min(100, Math.floor((fV/cap)*100)) + "%", x, y - 20);
     }
 }
 
 let lastTime = performance.now();
 
+
+const beltG = ctx.createLinearGradient(0, 320 - 7, 0, 320 + 7);
+beltG.addColorStop(0, "#1a1c1d"); beltG.addColorStop(0.5, "#4a4e50"); beltG.addColorStop(1, "#1a1c1d");
+
+
 function draw() {
+ctx.setTransform(1, 0, 0, 1, 0, 0); // NEW: Resets the engine's internal matrix
+    
     let currentTime = performance.now();
     let dt = (currentTime - lastTime) / 16.0; 
     if (dt > 2) dt = 1;
@@ -569,10 +664,10 @@ function draw() {
 
     // Belt
     ctx.lineWidth = 14;
-    let beltG = ctx.createLinearGradient(0, beltY - 7, 0, beltY + 7);
-    beltG.addColorStop(0, "#1a1c1d"); beltG.addColorStop(0.5, "#4a4e50"); beltG.addColorStop(1, "#1a1c1d");
+    //let beltG = ctx.createLinearGradient(0, beltY - 7, 0, beltY + 7);
+    //beltG.addColorStop(0, "#1a1c1d"); beltG.addColorStop(0.5, "#4a4e50"); beltG.addColorStop(1, "#1a1c1d");
     ctx.strokeStyle = beltG;
-    ctx.beginPath(); ctx.moveTo(0, beltY); ctx.lineTo(360, beltY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 320); ctx.lineTo(360, 320); ctx.stroke();
     
     if(active){
         spawnTimer -= dt; 
@@ -606,7 +701,7 @@ function draw() {
         }
         
      // 2. MISS CHECK (Mug's back edge passed the teapot's right edge while empty)
-if((c.x - c.w/2) > 215 && c.fill < c.cap && !c.proc){
+if((c.x - c.w/2) > 160 && c.fill < c.cap && !c.proc){
     active = false; 
     shake = 25; 
     document.getElementById('missed').style.display = 'block';
@@ -617,7 +712,7 @@ if((c.x - c.w/2) > 215 && c.fill < c.cap && !c.proc){
 
         // 3. SUCCESS CHECK (Mug has passed the pouring zone)
 // 3. SUCCESS CHECK (Mug's back edge has passed the teapot's right edge)
-if((c.x - c.w/2) > 215 && !c.proc){
+if((c.x - c.w/2) > 160 && !c.proc){
     c.proc = true;
     levelTotalFill += Math.min(c.cap, c.fill);
     levelTotalCap += c.cap;
